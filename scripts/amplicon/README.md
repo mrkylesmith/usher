@@ -66,5 +66,5 @@ Required Options:
 ### Output files
 The following two output files will be generated after placement and written to the output directory or current directory if `-d` flag not given.
 - `final-tree.nh`:  A generated Newick file of the tree 
-- `clade.txt`: Information about likely clade assignments for each amplicon sample, relative to the number of equally parsimonious placements possible for the given sample.
+- `clade0.txt` and/or `clade1.txt`: Information about likely clade assignments for each amplicon sample, relative to the number of equally parsimonious placements possible for the given sample.  Samples for `Nextclade` and `pangolin` are split into separate clade.txt files. 
  
