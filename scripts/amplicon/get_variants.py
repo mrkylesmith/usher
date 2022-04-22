@@ -6,6 +6,7 @@ import os
 import os.path
 import sys
 import subprocess
+from py_console import console
 
 def options():
     print("usage: get_variants.py [-h] -f READS [-a ALIGN_WITH] [-r]")
@@ -122,5 +123,5 @@ if (os.path.exists(output_vcf) == False):
     print("ERROR: Variant call file, {} not found.".format(output_vcf))
     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), output_vcf)
 
-print("SUCCESS: Variant call file generated for input amplicon reads: {}".format(output_vcf))
+console.success("SUCCESS: Variant call file generated for input amplicon reads: {}".format(output_vcf))
 
