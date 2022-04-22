@@ -1,6 +1,7 @@
 #include "amplicon.hpp"
 #include "src/mutation_annotated_tree.hpp"
 #include "tbb/concurrent_unordered_set.h"
+#include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <cassert>
@@ -10,6 +11,7 @@
 #include <time.h>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace po = boost::program_options;
@@ -118,7 +120,10 @@ int main(int argc, char **argv) {
     }
     path = boost::filesystem::canonical(outdir);
     outdir = path.generic_string();
-    auto annotations_file = fopen((outdir + "/clade.txt").c_str(), "w");
+    std::vector<FILE*> annotation_files;
+    for (auto annot_idx=0; annot_idx<T.get_num_annotations(); annot_idx++) {
+        annotation_files.push_back(fopen((outdir+"/clade"+std::to_string(annot_idx)+".txt").c_str(), "w"));
+    }
 
     static tbb::affinity_partitioner ap;
 
@@ -352,83 +357,48 @@ int main(int argc, char **argv) {
 
         best_node = bfs[best_j];
 
-        std::vector<std::vector<std::string>> clade_assignments;
-        clade_assignments.resize(num_annotations);
+        //std::vector<std::vector<std::string>> clade_assignments;
+        std::vector<std::unordered_map<std::string, int>> clade_assignments(num_annotations);
         for (size_t c = 0; c < num_annotations; c++) {
-            clade_assignments[c].resize(best_placements.size());
             // TODO: can be parallelized
+            auto& this_annotation_class=clade_assignments[c];
             for (size_t k = 0; k < best_placements.size(); k++) {
                 bool include_self =
                     !bfs[best_placements[k]]->is_leaf() && !node_has_unique[k];
-                auto clade_assignment = T.get_clade_assignment(
-                    bfs[best_placements[k]], c, include_self);
-                clade_assignments[c][k] = clade_assignment;
-            }
-            std::sort(clade_assignments[c].begin(), clade_assignments[c].end());
-        }
-        fprintf(annotations_file, "%s\t", sample.c_str());
-        std::vector<std::string> most_common_clades(num_annotations);
-        std::vector<float> most_common_proportion(num_annotations);
-        for (size_t k = 0; k < num_annotations; k++) {
-            std::string curr_clade = "";
-            int curr_count = 0;
-            int most_common_count = 0;
-            std::string most_common_clade = "";
-            for (auto clade : clade_assignments[k]) {
-                if (clade == curr_clade) {
-                    curr_count++;
-                } else {
-                    if (curr_count > most_common_count) {
-                        most_common_count = curr_count;
-                        most_common_clade = curr_clade;
-                    }
-                    curr_clade = clade;
-                    curr_count = 1;
+                auto clade_assignment =
+                    T.get_clade_assignment(bfs[best_placements[k]], c, include_self);
+                auto res=this_annotation_class.emplace(clade_assignment,1);
+                if (!res.second) {
+                    res.first->second++;
                 }
             }
-            if (curr_count > most_common_count) {
-                most_common_count = curr_count;
-                most_common_clade = curr_clade;
-            }
-            most_common_clades[k] = most_common_clade;
-            most_common_proportion[k] =
-                (float)most_common_count / (float)clade_assignments[k].size();
         }
         for (size_t k = 0; k < num_annotations; k++) {
-            fprintf(annotations_file, "%s(%0.2f%%)",
-                    most_common_clades[k].c_str(),
-                    most_common_proportion[k] * 100);
-            fprintf(annotations_file, "*|");
-            std::string curr_clade = "";
-            int curr_count = 0;
-            for (auto clade : clade_assignments[k]) {
-                if (clade == curr_clade) {
-                    curr_count++;
-                } else {
-                    if (curr_count > 0) {
-                        fprintf(annotations_file, "%s(%i/%zu,%0.2f%%),",
-                                curr_clade.c_str(), curr_count,
-                                clade_assignments[k].size(),
-                                100 * (float)curr_count /
-                                    (float)clade_assignments[k].size());
-                    }
-                    curr_clade = clade;
-                    curr_count = 1;
+            auto annotations_file=annotation_files[k];
+            fprintf(annotations_file, "%s\t", sample.c_str());
+            std::vector<std::pair<std::string, int>> clade_counts(clade_assignments[k].begin(),clade_assignments[k].end());
+            std::sort(clade_counts.begin(),clade_counts.end(),[](const std::pair<std::string, int>& first, const std::pair<std::string, int>& second){
+                if(first.second>second.second){
+                    return true;
+                }else if (first.second==second.second) {
+                    return first.first>second.first;
                 }
-            }
-            if (curr_count > 0) {
+                return false;
+            });
+            // TODO
+            for(int clade_idx=0;clade_idx<clade_counts.size();clade_idx++){
+                const auto& clade_to_print=clade_counts[clade_idx];
                 fprintf(annotations_file, "%s(%i/%zu,%0.2f%%)",
-                        curr_clade.c_str(), curr_count,
-                        clade_assignments[k].size(),
-                        100 * (float)curr_count /
-                            (float)clade_assignments[k].size());
+                                clade_to_print.first.c_str(), clade_to_print.second,
+                                num_best,100*(float)clade_to_print.second/(float)num_best);
+                if (clade_idx!=clade_counts.size()-1) {
+                    fputc(',', annotations_file);
+                }
             }
-            if (k + 1 < num_annotations) {
-                fprintf(annotations_file, "\t");
-            }
+            
+            fprintf(annotations_file, "\n");
+            fflush(annotations_file);
         }
-        fprintf(annotations_file, "\n");
-        fflush(annotations_file);
         // Is placement as sibling
         if (best_node->is_leaf() || node_has_unique[best_j]) {
             std::string nid = T.new_internal_node_id();
