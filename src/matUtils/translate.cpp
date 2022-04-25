@@ -44,7 +44,7 @@ std::unordered_map<int, std::vector<std::shared_ptr<Codon>>> build_codon_map(std
     std::string gtf_line;
     std::vector<std::string> gtf_lines;
     std::vector<std::string> done;
-    
+
     while (std::getline(gtf_file, gtf_line)) {
         gtf_lines.push_back(gtf_line);
     }
@@ -260,7 +260,7 @@ void translate_main(MAT::Tree *T, std::string output_filename, std::string gtf_f
 
     std::string reference = build_reference(fasta_file);
 
-    output_file << "node_id\taa_mutations\tnt_mutations\tleaves_sharing_mutations" << '\n';
+    output_file << "node_id\taa_mutations\tnt_mutations\tcodon_changes\tleaves_sharing_mutations" << '\n';
 
     // This maps each position in the reference to a vector of codons.
     // Some positions may be associated with multiple codons (frame shifts).
@@ -292,7 +292,7 @@ void translate_main(MAT::Tree *T, std::string output_filename, std::string gtf_f
 }
 
 // This is used for taxodium output. It translates each node and saves metadata to node_data along the way
-void translate_and_populate_node_data(MAT::Tree *T, std::string gtf_filename, std::string fasta_filename, Taxodium::AllNodeData *node_data, Taxodium::AllData *all_data, std::unordered_map<std::string, std::vector<std::string>> &metadata, MetaColumns fixed_columns, std::vector<GenericMetadata> &generic_metadata, float x_scale) {
+void translate_and_populate_node_data(MAT::Tree *T, std::string gtf_filename, std::string fasta_filename, Taxodium::AllNodeData *node_data, Taxodium::AllData *all_data, std::unordered_map<std::string, std::vector<std::string>> &metadata, MetaColumns fixed_columns, std::vector<GenericMetadata> &generic_metadata, float x_scale, bool include_nt) {
     std::ifstream fasta_file(fasta_filename);
     if (!fasta_file) {
         fprintf(stderr, "ERROR: Could not open the fasta file: %s!\n", fasta_filename.c_str());
@@ -350,14 +350,24 @@ void translate_and_populate_node_data(MAT::Tree *T, std::string gtf_filename, st
         }
         branch_length_map[node->identifier] = curr_x_value;
 
+        // First collect (syn and nonsyn) nucleotide mutations with a fake gene called nt
+        std::string mutation_result = "";
+        if (include_nt) {
+            for (auto m : node->mutations) {
+                mutation_result += "nt:";
+                mutation_result += MAT::get_nuc(m.par_nuc);
+                mutation_result +=  "_" + std::to_string(m.position) + "_";
+                mutation_result += MAT::get_nuc(m.mut_nuc);
+                mutation_result +=  ";";
+            }
+        }
         // Do mutations
         Taxodium::MutationList *mutation_list = node_data->add_mutations();
-        std::string mutation_result = "";
 
         // This string is a semicolon separated list of mutations in format
         // [orf]:[orig aa]_[orf num]_[new aa]
         // e.g. S:K_200_V;ORF1a:G_240_N
-        mutation_result = do_mutations(node->mutations, codon_map, true);
+        mutation_result += do_mutations(node->mutations, codon_map, true);
 
 
         if (node->is_root()) {
@@ -488,13 +498,16 @@ void translate_and_populate_node_data(MAT::Tree *T, std::string gtf_filename, st
 std::string do_mutations(std::vector<MAT::Mutation> &mutations, std::unordered_map<int, std::vector<std::shared_ptr<Codon>>> &codon_map, bool taxodium_format) {
     std::string prot_string = "";
     std::string nuc_string = "";
+    std::string cchange_string = "";
     std::sort(mutations.begin(), mutations.end());
     std::unordered_map<std::string, std::set<MAT::Mutation>> codon_to_nt_map;
+    std::unordered_map<std::string, std::string> codon_to_changestring_map;
     std::unordered_map<std::string, char> orig_proteins;
     std::vector<std::shared_ptr<Codon>> affected_codons;
 
     for (auto &m : mutations) {
         char mutated_nuc = MAT::get_nuc(m.mut_nuc);
+        char par_nuc = MAT::get_nuc(m.par_nuc);
         int pos = m.position - 1;
         auto codon_map_it = codon_map.find(pos);
         if (codon_map_it == codon_map.end()) {
@@ -503,6 +516,8 @@ std::string do_mutations(std::vector<MAT::Mutation> &mutations, std::unordered_m
             // Mutate each codon associated with this position
             for (auto codon_ptr : codon_map_it->second) {
                 std::string codon_id = codon_ptr->orf_name + ':' + std::to_string(codon_ptr->codon_number+1);
+                //first, update the codon to match the parent state instead of the reference state as part of the codon output
+                codon_ptr->mutate(pos, par_nuc);
                 auto orig_it = orig_proteins.find(codon_id);
                 if (orig_it == orig_proteins.end()) {
                     orig_proteins.insert({codon_id, codon_ptr->protein});
@@ -510,7 +525,13 @@ std::string do_mutations(std::vector<MAT::Mutation> &mutations, std::unordered_m
                 if (std::find(affected_codons.begin(), affected_codons.end(), codon_ptr) == affected_codons.end()) {
                     affected_codons.push_back(codon_ptr);
                 }
+                std::string original_codon = codon_ptr->nucleotides;
+                //then update it again to match the mutated state
                 codon_ptr->mutate(pos, mutated_nuc);
+                // store a string representing the original and new codons in nucleotides
+                // this may incorporate multiple nucleotide mutations, just accounting for the original and end states.
+                std::string changestring = original_codon + ">" + codon_ptr->nucleotides;
+                codon_to_changestring_map.insert({codon_id, changestring});
                 // Build a map of codons and their associated nt mutations
                 auto to_nt_it = codon_to_nt_map.find(codon_id);
                 if (to_nt_it == codon_to_nt_map.end()) {
@@ -542,6 +563,8 @@ std::string do_mutations(std::vector<MAT::Mutation> &mutations, std::unordered_m
             nuc_string.resize(nuc_string.length() - 1); // remove trailing ','
             nuc_string += ';';
         }
+        std::string changestring = codon_to_changestring_map.find(codon_id)->second;
+        cchange_string += changestring + ";";
     }
 
     if (!nuc_string.empty() && nuc_string.back() == ';') {
@@ -550,12 +573,15 @@ std::string do_mutations(std::vector<MAT::Mutation> &mutations, std::unordered_m
     if (!prot_string.empty() && prot_string.back() == ';') {
         prot_string.resize(prot_string.length() - 1); //remove trailing ';'
     }
-    if (nuc_string.empty() || prot_string.empty()) {
+    if (!cchange_string.empty() && cchange_string.back() == ';') {
+        cchange_string.resize(cchange_string.length() - 1); //remove trailing ';'
+    }
+    if (nuc_string.empty() || prot_string.empty() || cchange_string.empty()) {
         return "";
     } else if(taxodium_format) { // format string for taxodium pb
         return prot_string;
     } else { // format string for TSV output
-        return prot_string + '\t' + nuc_string;
+        return prot_string + '\t' + nuc_string + '\t' + cchange_string;
     }
 }
 
@@ -575,3 +601,289 @@ void undo_mutations(std::vector<MAT::Mutation> &mutations, std::unordered_map<in
         }
     }
 }
+
+
+
+/// Taxodium protobuf output functions below
+
+
+// Helper function to format one attribute into taxodium encoding for a SingleValuePerNode metadata type
+void populate_generic_metadata(int attribute_column, std::vector<std::string> &attributes, std::unordered_map<std::string, std::string> &seen_map, int &encoding_counter, Taxodium::MetadataSingleValuePerNode *single) {
+    if (attributes[attribute_column] != "") {
+        std::string attr_val = attributes[attribute_column];
+        if (seen_map.find(attr_val) == seen_map.end()) {
+            encoding_counter++;
+            std::string encoding_str = std::to_string(encoding_counter);
+            seen_map[attr_val] = encoding_str;
+            single->add_mapping(attr_val);
+            attributes[attribute_column] = encoding_str;
+        } else {
+            attributes[attribute_column] = seen_map[attr_val];
+        }
+    } else {
+        attributes[attribute_column] = "0";
+    }
+}
+
+// Helper function to populate non-generic metadata types that have mapping encodings.
+void populate_fixed_metadata(std::string name, int attribute_column, std::vector<std::string> &attributes, std::unordered_map<std::string, std::string> &seen_map, int &encoding_counter, Taxodium::AllData &all_data) {
+    if (attributes[attribute_column] != "") {
+        if (seen_map.find(attributes[attribute_column]) == seen_map.end()) {
+            encoding_counter++;
+            std::string encoding_str = std::to_string(encoding_counter);
+            seen_map[attributes[attribute_column]] = encoding_str;
+            if (name == "date") { // only date for now
+                all_data.add_date_mapping(attributes[attribute_column]);
+            }
+            attributes[attribute_column] = encoding_str;
+        } else {
+            attributes[attribute_column] = seen_map[attributes[attribute_column]];
+        }
+    } else {
+        attributes[attribute_column] = "0";
+    }
+}
+
+// Store the metadata differently for taxodium pb format
+std::unordered_map<std::string, std::vector<std::string>> read_metafiles_tax(std::vector<std::string> filenames, Taxodium::AllData &all_data, Taxodium::AllNodeData *node_data, MetaColumns &columns, std::vector<GenericMetadata> &generic_metadata, std::vector<std::string> additional_meta_fields) {
+
+    /* We look for the following metadata fields:
+     * strain, genbank_accession, country, date, pangolin_lineage
+     * strain is the sample ID and is required. The rest may be missing.
+     * Additional fields to look for are specified with -F
+     */
+
+
+    int32_t date_ct = 0;
+    all_data.add_date_mapping("");
+    std::unordered_map<std::string, std::string> seen_dates_map;
+
+    int num_generic = 0;
+    bool country_found = false;
+    bool lineage_found = false;
+
+    std::unordered_map<std::string, std::vector<std::string>> metadata;
+
+    // First parse all files into metadata map
+    std::vector<std::string> header;
+    int additional_fields = 0; // Number of new fields in each metadata file
+    for (std::string f : filenames) {
+        std::ifstream infile(f);
+        if (!infile) {
+            fprintf(stderr, "ERROR: Could not open the file: %s!\n", f.c_str());
+            exit(1);
+        }
+        std::string line;
+        char delim = '\t';
+        if (f.find(".csv\0") != std::string::npos) {
+            delim = ',';
+        }
+        bool first = true;
+        int strain_column = -1;
+        std::unordered_map<std::string, bool> seen_in_this_file; // ignore duplicates per file
+        while (std::getline(infile, line)) {
+            if (line.length() < 3) {
+                continue;
+            }
+            std::vector<std::string> words;
+            if (line[line.size()-1] == '\r') {
+                line = line.substr(0, line.size()-1);
+            }
+            MAT::string_split(line, delim, words);
+            if (first) { // header line
+                int field_count = 0;
+                for (int i = 0; i < (int) words.size(); i++) { // for each column name
+                    header.push_back(words[i]);
+                    field_count++;
+                    if (words[i] == "strain") {
+                        strain_column = i;
+                    }
+                }
+                additional_fields = field_count;
+                first = false;
+                if (strain_column == -1) {
+                    fprintf(stderr, "The column \"strain\" (sample ID) is missing from at least one metadata file.\n");
+                    exit(1);
+                }
+                continue;
+            }
+            std::string key = words[strain_column];
+            if ( seen_in_this_file.find(key) != seen_in_this_file.end() ) {
+                continue; // ignore duplicates in each metadata file
+            }
+            seen_in_this_file[key] = true;
+
+            int prev_header_size = header.size() - additional_fields;
+
+            if (metadata.find(key) == metadata.end()) {
+                // if we haven't seen this sample yet
+                metadata[key] = std::vector<std::string>();
+                while (metadata[key].size() < prev_header_size) {
+                    metadata[key].push_back("");
+                }
+            }
+
+            for (int i = 0; i < words.size(); i++) {
+                // Check all metadata fields up to this one
+                // If the same field exists earlier, copy non-empty
+                // values into the first column of the field
+                std::string word = words[i];
+                metadata[key].push_back(word);
+                for (int j = 0; j < prev_header_size; j++) {
+                    if (header[j] == header[prev_header_size + i]) {
+                        if (words[i] != "") {
+                            metadata[key][j] = words[i];
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // fills out empty columns
+            while(metadata[key].size() < header.size()) {
+                metadata[key].push_back("");
+            }
+
+        }
+        infile.close();
+    }
+    for(auto &v : metadata) {
+        // fill out empty columns
+        while(metadata[v.first].size() < header.size()) {
+            metadata[v.first].push_back(""); // handles empty metadata in the last columns
+        }
+    }
+    // Then use map to make taxodium encodings and check for defined/generic fields
+    // If the same column is present in multiple metadata files (or multiple times in a file),
+    // the non-empty values are condensed into the first column of that name.
+    std::unordered_map<std::string, bool> done_fields;
+    for (int i = 0; i < (int) header.size(); i++) {
+        std::string field = header[i];
+        if (done_fields.find(field) != done_fields.end()) {
+            continue; // already included this field
+        }
+        done_fields[field] = true;
+        if (field == "strain") {
+            columns.strain_column = i;
+        } else if (field == "genbank_accession") {
+            columns.genbank_column = i;
+        } else if (field == "date") {
+            columns.date_column = i;
+        }
+
+        // Encode everything else as generic
+        if (field != "strain" && field != "genbank_accession" && field != "date") {
+            if (std::find(additional_meta_fields.begin(), additional_meta_fields.end(), field) != additional_meta_fields.end() || field == "pangolin_lineage" || field == "country") {
+                Taxodium::MetadataSingleValuePerNode *metadata_single = node_data->add_metadata_singles();
+
+                // Lineage and country are expected to be named "Lineage" and "Country" in Taxodium, so
+                // rename the standard column names. Other custom metadata fields will use their column
+                // name as the pb field name
+                if (field == "pangolin_lineage") {
+                    lineage_found = true;
+                    metadata_single->set_metadata_name("Lineage");
+                } else if (field == "country") {
+                    country_found = true;
+                    metadata_single->set_metadata_name("Country");
+                } else {
+                    metadata_single->set_metadata_name(field);
+                }
+                metadata_single->add_mapping("");
+                std::unordered_map<std::string, std::string> empty_map;
+                GenericMetadata new_meta = {
+                    .name = field,
+                    .column = i,
+                    .index = num_generic,
+                    .count = 0,
+                    .seen = empty_map,
+                    .protobuf_data_ptr = metadata_single
+                };
+                generic_metadata.push_back(new_meta);
+                num_generic ++;
+            }
+        }
+    }
+    char found[]  = "(FOUND)";
+    char missing[] = "(MISSING)";
+    fprintf(stderr, "\nLooking for the following metadata fields:\n");
+    fprintf(stderr, "-- %s %s\n", found, "strain (this is the sample ID)");
+    fprintf(stderr, "-- %s %s\n", columns.genbank_column > -1 ? found : missing, "genbank_accession");
+    fprintf(stderr, "-- %s %s\n", columns.date_column > -1 ? found : missing, "date");
+    fprintf(stderr, "-- %s %s\n", country_found ? found : missing, "country");
+    fprintf(stderr, "-- %s %s\n", lineage_found ? found : missing, "pangolin_lineage");
+    fprintf(stderr, "\nIf any of the above fields are missing, importing into Taxodium may not work properly.\n");
+
+    if (additional_meta_fields.size() > 0) {
+        additional_meta_fields.erase(std::remove(additional_meta_fields.begin(), additional_meta_fields.end(), "strain"), additional_meta_fields.end());
+        fprintf(stderr, "\nThe following additional metadata fields were specified:\n");
+        for (std::string name : additional_meta_fields) {
+            fprintf(stderr, "-- %s\n", name.c_str());
+        }
+    }
+
+
+    for (auto &v : metadata) { // for each metadata value
+        // Build mappings for generic metadata types
+        for (int i = 0; i < (int) generic_metadata.size(); i++) {
+            populate_generic_metadata(generic_metadata[i].column, v.second, generic_metadata[i].seen, generic_metadata[i].count, node_data->mutable_metadata_singles(i));
+        }
+
+        // Build mappings for fixed metadata types
+        if (columns.date_column > -1) {
+            populate_fixed_metadata("date", columns.date_column, v.second, seen_dates_map, date_ct, all_data);
+        }
+
+    }
+
+
+    fprintf(stderr, "\nPerforming conversion.\n");
+
+    return metadata;
+}
+void save_taxodium_tree (MAT::Tree &tree, std::string out_filename, std::vector<std::string> meta_filenames, std::string gtf_filename, std::string fasta_filename, std::string title, std::string description, std::vector<std::string> additional_meta_fields, float x_scale, bool include_nt) {
+
+    // These are the taxodium pb objects
+    Taxodium::AllNodeData *node_data = new Taxodium::AllNodeData();
+    Taxodium::AllData all_data;
+
+    all_data.set_tree_title(title);
+    all_data.set_tree_description(description);
+
+    // For fixed fields
+    MetaColumns columns = {
+        .strain_column = -1,
+        .date_column = -1,
+        .genbank_column = -1,
+    };
+
+    std::vector<GenericMetadata> generic_metadata;
+
+    std::unordered_map<std::string, std::vector<std::string>> metadata = read_metafiles_tax(meta_filenames, all_data, node_data, columns, generic_metadata, additional_meta_fields);
+    TIMEIT();
+
+    // Fill in the taxodium data while doing aa translations
+    translate_and_populate_node_data(&tree, gtf_filename, fasta_filename, node_data, &all_data, metadata, columns, generic_metadata, x_scale, include_nt);
+    all_data.set_allocated_node_data(node_data);
+
+    // Boost library used to stream the contents to the output protobuf file in
+    // uncompressed or compressed .gz format
+    std::ofstream outfile(out_filename, std::ios::out | std::ios::binary);
+    boost::iostreams::filtering_streambuf< boost::iostreams::output> outbuf;
+
+    if (out_filename.find(".gz\0") != std::string::npos) {
+        try {
+            outbuf.push(boost::iostreams::gzip_compressor());
+            outbuf.push(outfile);
+            std::ostream outstream(&outbuf);
+            all_data.SerializeToOstream(&outstream);
+            boost::iostreams::close(outbuf);
+            outfile.close();
+        } catch(const boost::iostreams::gzip_error& e) {
+            std::cout << e.what() << '\n';
+        }
+    } else {
+        all_data.SerializeToOstream(&outfile);
+        outfile.close();
+    }
+}
+// end taxodium output functions
