@@ -16,7 +16,7 @@ git clone https://github.com/oneapi-src/oneTBB
 cd oneTBB
 git checkout cc2c04e2f5363fb8b34c10718ce406814810d1e6
 cd ..
-cmake  -DTBB_DIR=${PWD}/oneTBB  -DCMAKE_PREFIX_PATH=${PWD}/oneTBB/cmake ..
+cmake  -DTBB_DIR=${PWD}/oneTBB  -DCMAKE_PREFIX_PATH=${PWD}/oneTBB/cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j
 cd ..
 
@@ -26,20 +26,19 @@ followed by, if on a MacOS system:
 ```
 rsync -aP rsync://hgdownload.soe.ucsc.edu/genome/admin/exe/macOSX.x86_64/faToVcf .
 chmod +x faToVcf
-mv faToVcf scripts/
+mv faToVcf build/
 ```
 
 or if on a Linux system:
 ```
 rsync -aP rsync://hgdownload.soe.ucsc.edu/genome/admin/exe/linux.x86_64/faToVcf .
 chmod +x faToVcf
-mv faToVcf scripts/
+mv faToVcf build/
 ```
 
-Executables will be located in the build and scripts directories. Make sure they’re on your path for your system as appropriate, or that you modify your commands to indicate their location.
+Executables will be located in the build directory. Make sure they’re on your path for your system as appropriate, or that you modify your commands to indicate their location.
 ```
 export PATH=$PATH:/path/to/install/usher/build/
-export PATH=$PATH:/path/to/install/usher/scripts/
 ```
 
 ### Installation scripts
