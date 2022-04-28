@@ -12,6 +12,8 @@ dependencies:
   - autoconf
   - boost-cpp
   - mafft
+  - minimap2
+  - samtools
   - python
   - git
   - wget
