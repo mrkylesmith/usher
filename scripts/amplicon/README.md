@@ -44,7 +44,7 @@ export PATH=$PATH:/path/to/install/usher/scripts/
 
 ### Installation scripts
 ```
-git clone https://github.com/mrkylesmith/usher.git
+git clone https://github.com/yatisht/usher.git
 cd usher
 ```
 
