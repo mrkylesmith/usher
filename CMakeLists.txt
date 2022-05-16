@@ -55,6 +55,7 @@ file(GLOB MATUTIL_SRCS "src/matUtils/*.cpp" "src/matUtils/*.hpp")
 file(GLOB RIPPLES_SRCS "src/ripples/*.cpp" "src/ripples/*.hpp")
 file(GLOB RIPPLES_FAST_SRCS "src/ripples/ripples_fast/*.cpp" "src/ripples/ripples_fast/*.hpp")
 file(GLOB RIPPLES_UTILS_SRCS "src/ripplesUtils/*.cpp" "src/ripplesUtils/*.hpp")
+#file(GLOB AMPLICON_SRCS "src/amplicon/*.cpp" "src/amplicon/*.hpp")
 
 set_source_files_properties(src/mutation_annotated_tree.cpp PROPERTIES COMPILE_FLAGS -O3)
 #set_source_files_properties(src/usher_mapper.cpp PROPERTIES COMPILE_FLAGS -O3)
@@ -241,15 +242,6 @@ else()
         ${TAXO_HDRS}
         )
 
-    add_executable(ripplesUtils
-				src/mutation_annotated_tree.cpp
-				src/usher_mapper.cpp 
-			  # HERE
-				${RIPPLES_UTILS_SRCS}
-				${PROTO_SRCS}
-				${PROTO_HDRS}
-        )
-
     add_executable(ripples
         src/mutation_annotated_tree.cpp
         src/usher_mapper.cpp
@@ -266,17 +258,22 @@ else()
         ${PROTO_HDRS}
         )
 
-    add_executable(amplicon
-				src/mutation_annotated_tree.cpp
-				src/usher_mapper.cpp 
-				src/ripplesUtils/text_parser.hpp
-				src/ripplesUtils/text_parser.cpp
-				src/amplicon/amplicon.cpp
-				src/amplicon/amplicon.hpp
-				src/amplicon/main.cpp
-				${PROTO_SRCS}
-				${PROTO_HDRS}
+    add_executable(ripplesUtils
+        src/mutation_annotated_tree.cpp
+        src/usher_mapper.cpp
+				${RIPPLES_UTILS_SRCS}
+        ${PROTO_SRCS}
+        ${PROTO_HDRS}
         )
+
+#add_executable(amplicon
+#				src/mutation_annotated_tree.cpp
+#				src/usher_mapper.cpp 
+#				src/ripplesUtils/text_parser.hpp
+#				${AMPLICON_SRCS}
+#				${PROTO_SRCS}
+#				${PROTO_HDRS}
+#       )
 
     add_executable(compareVCF
         src/mutation_annotated_tree.cpp
@@ -385,8 +382,8 @@ target_include_directories(usher PUBLIC "${PROJECT_BINARY_DIR}")
 TARGET_COMPILE_OPTIONS(matUtils PRIVATE -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
 TARGET_LINK_LIBRARIES(matUtils PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 
+#TARGET_LINK_LIBRARIES(amplicon PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 TARGET_LINK_LIBRARIES(ripplesUtils PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
-TARGET_LINK_LIBRARIES(amplicon PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 
 TARGET_COMPILE_OPTIONS(ripples PRIVATE -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
 TARGET_LINK_LIBRARIES(ripples PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
