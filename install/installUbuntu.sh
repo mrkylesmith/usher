@@ -18,16 +18,13 @@ cd isa-l-2.30.0
 make -j$(nproc)
 sudo -E make install
 cd ..
+
 #download and install TBB
 wget https://github.com/oneapi-src/oneTBB/archive/2019_U9.tar.gz 
 tar -xvzf 2019_U9.tar.gz
-cmake -GNinja -DTBB_DIR=${PWD}/oneTBB-2019_U9  -DCMAKE_PREFIX_PATH=${PWD}/oneTBB-2019_U9/cmake ..
-#make -j$(nproc) VERBOSE=1
-
-# install ninja
-sudo apt-get install ninja
-
-
+cmake  -DTBB_DIR=${PWD}/oneTBB-2019_U9  -DCMAKE_PREFIX_PATH=${PWD}/oneTBB-2019_U9/cmake ..
+make -j$(nproc) VERBOSE=1
+ 
 # install faToVcf
 rsync -aP rsync://hgdownload.soe.ucsc.edu/genome/admin/exe/linux.x86_64/faToVcf .
 chmod +x faToVcf
