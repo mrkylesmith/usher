@@ -35,7 +35,7 @@ def convert(n):
     return str(datetime.timedelta(seconds = n))
 
 def parse_command(mat, start, end, out):
-    command = "python3 process.py {} {} {} {} {} {}".format(version,
+    command = "python3 process.py {} {} {} {} {} {} {} {} {}".format(version,
             mat, start, end, out, bucket_id, results, reference, raw_sequences)
     return command
 
@@ -123,7 +123,7 @@ print("Found {} long branches in {} to split across {} instances (number of inst
 branches_per_instance = long_branches//instances        
 
 partitions = get_partitions(long_branches, instances)
-print("long branches: {}, instances: {}, w: {}".format(long_branches, instances, branches_per_instance))
+print("long branches: {}, instances: {}, branches_per_instance: {}".format(long_branches, instances, branches_per_instance))
 print("partitions: {}".format(partitions))
 
 processes = []
@@ -184,7 +184,8 @@ for directory in os.listdir(temp):
     files = os.listdir(subdir)
     for file in files:
       # Skip over descendents.tsv files for aggregating recombination events
-      if "recombination" not in file:
+      if "final_recombinants.txt" not in file:
+          print("ERROR: Direction contained additional file: ", file)
           continue
       f = open(subdir + "/" +  file, "r")
       for line in f:
