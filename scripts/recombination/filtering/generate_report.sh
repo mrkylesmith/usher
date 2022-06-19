@@ -18,8 +18,8 @@ if [ "$#" -ne 2 ]; then
 fi
 
 mkdir -p filtering/fastas
-mv $reference filtering/fastas
-mv $all_sequences_fasta filtering/fastas/extractedSeqs.fa
+cp $reference filtering/fastas/reference.fa
+cp $all_sequences_fasta filtering/fastas/extractedSeqs.fa
 
 #descendants="filtering/data/allDescendants.txt"
 #out_fasta="filtering/fastas/extractedSeqs.fa"

@@ -5,7 +5,7 @@ recombination_file_name = "filtering/data/combinedCatOnlyBestWithPVals.txt"
 sampleinfo_file_names = ["filtering/data/sampleInfo.txt"]
 all_fasta_file_name = "filtering/fastas/extractedSeqs.fa" 
 #TEST THIS
-reference_file_name = "filtering/fastas/wuhCor1.fa"
+reference_file_name = "filtering/fastas/reference.fa"
 
 print_all = (sys.argv[1] == '-a')
 

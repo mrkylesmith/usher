@@ -31,11 +31,10 @@ pipeline_dir = os.getcwd()
 def convert(n):
     return str(datetime.timedelta(seconds = n))
 
-def parse_ripples_command(version, MAT, start, end):
+def parse_ripples_command(version, mat, start, end):
     # Expecting ripples output (recombination.txt and descendents.txt)
     # in recombination/filtering to start this pipeline
-    command = "{} -i {} -n 2 -S {} -E {} -d filtering/data".format(version, MAT, start, end)
-    print(command)
+    command = [version, "-i", mat, "-S", start, "-E", end, "-d", "filtering/data"]
     return command
 
 # Check starting directory is correct
@@ -47,9 +46,12 @@ if (os.path.exists("process.py") == False):
 
 # Copy over protobuf, raw sequence file and reference from GCP Storage into irectory inside container
 print("Copying input MAT: {} from GCP Storage bucket into local directory on remote machine.".format(mat))
-subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, mat), pipeline_dir])
-subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, reference), pipeline_dir])
-subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, raw_sequences), pipeline_dir])
+if not os.path.exists(mat):
+  subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, mat), pipeline_dir])
+if not os.path.exists(reference):
+  subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, reference), pipeline_dir])
+if not os.path.exists(raw_sequences):
+  subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, raw_sequences), pipeline_dir])
 
 # Run ripples on current GCP instance
 cmd = parse_ripples_command(version, mat, start_range, end_range)
