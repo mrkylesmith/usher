@@ -165,7 +165,7 @@ if (os.path.isdir(temp) == False):
 
 # Copy over all subdirectories from GCP Bucket to local temp directory
 remote_results = "gs://{}/{}/*".format(bucket_id, config["results"])
-subprocess.run(["gsutil", "cp", "-r", remote_results, temp]
+subprocess.run(["gsutil", "cp", "-r", remote_results, temp])
 
 # Aggregate the results from all remote machines and combine into one final file in 'results/' dir
 for directory in os.listdir(temp):
@@ -186,6 +186,6 @@ for directory in os.listdir(temp):
 recombinants.close()
 
 # Remove temp directory 
-subprocess.run(["rm", "-r", temp]
+subprocess.run(["rm", "-r", temp])
 
 print("Final recombination event results written to {}/recombinants_{}.txt".format(local_results,date))

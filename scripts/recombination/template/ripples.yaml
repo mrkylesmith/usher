@@ -1,3 +1,8 @@
+# GCP credentials
+bucket_id: 
+project_id: 
+key_file: /tmp/keys/
+
 # GCP machine and Storage Bucket config
 instances: 
 boot_disk_size: 30
