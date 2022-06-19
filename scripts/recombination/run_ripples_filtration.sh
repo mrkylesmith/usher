@@ -46,9 +46,10 @@ awk '$21 <= .20 {print}' filtering/data/combinedCatOnlyBestWithPValsFinalReportW
 
 python3 filtering/doNewTieBreakers.py 
 
+mkdir -p results
 mkdir -p results/$out
 python3 filtering/removeRedundant.py   
-mv results/final_recombinants.txt results/$out
+mv results/final_recombinants.txt results/$out/
 gsutil cp -r results/$out $results/
 
 echo "Pipeline finished. List of recombinants detected in 'results/' directory."

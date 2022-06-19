@@ -23,7 +23,6 @@ mv $all_sequences_fasta filtering/fastas/extractedSeqs.fa
 
 #descendants="filtering/data/allDescendants.txt"
 #out_fasta="filtering/fastas/extractedSeqs.fa"
-
 #TODO: Separate this out into your own script and workflow.
 # Extract raw sequences for all needed descendants 
 # xzcat "${all_sequences_fasta}" | faSomeRecords stdin $descendants $out_fasta

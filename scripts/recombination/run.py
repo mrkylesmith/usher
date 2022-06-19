@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import os
+import os.path
 import pathlib
 import re
 import json
@@ -99,6 +100,14 @@ raw_sequences = config["raw_sequences"]
 #NOTE: Make sure this folder is created in Storage bucket ahead of time.
 results = "gs://{}/{}".format(bucket_id, config["results"])
 
+# Copy over protobuf from GCP storage bucket to local container
+current = str(os.getcwd())
+if not os.path.isfile("{}/{}".format(current,mat)):
+  print("Copying input MAT: {} from GCP Storage bucket into local directory in container.".format(mat))
+  subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, mat), current])
+else:
+    print("Input MAT found in local directory.")
+
 # Run ripples init scripts 
 init = "ripplesInit -i {}".format(mat)
 try:
@@ -108,7 +117,7 @@ except:
   print("Empty tree input or error with input metadata. Check 'ripples.yaml' config file")
   exit(1)
 
-print("Found {} long branches in {} to split across {} instances (set in 'ripples.yaml').".format(long_branches, mat, instances))
+print("Found {} long branches in {} to split across {} instances (number of instances set in 'ripples.yaml').".format(long_branches, mat, instances))
 
 # Num of long branches to search per instance
 branches_per_instance = long_branches//instances        

@@ -55,6 +55,6 @@ subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, raw_sequences), p
 cmd = parse_ripples_command(version, mat, start_range, end_range)
 subprocess.run(cmd)
 
-filtration = ["./run_ripples_filtration.sh", mat, raw_seqs, reference, results, out]
+filtration = ["./run_ripples_filtration.sh", mat, raw_sequences, reference, results, out]
 # Run putative recombinants through post-processing filtration pipeline
 subprocess.run(filtration)
