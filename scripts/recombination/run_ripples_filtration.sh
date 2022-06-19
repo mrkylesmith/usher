@@ -46,10 +46,15 @@ awk '$21 <= .20 {print}' filtering/data/combinedCatOnlyBestWithPValsFinalReportW
 
 python3 filtering/doNewTieBreakers.py 
 
+# Copy filtered recombinants to GCP bucket
 mkdir -p results
 mkdir -p results/$out
 python3 filtering/removeRedundant.py   
 mv results/final_recombinants.txt results/$out/
 gsutil cp -r results/$out $results/
+
+# Copy ripples unfiltered recombinants to GCP bucket
+gsutil cp filtering/data/recombination.tsv $results/$out
+gsutil cp filtering/data/descendants.tsv $results/$out
 
 echo "Pipeline finished. List of recombinants detected in 'results/' directory."

@@ -64,12 +64,11 @@ WORKDIR usher
 RUN git checkout ripples_pipeline_dev
 
 RUN ./install/installUbuntu.sh 
+RUN apt-get install -y parallel
 
 # Install 3seq
-RUN git clone https://gitlab.com/mrkylesmith/3seq.git && \
-cd scripts/recombination/3seq && \
-make -j && \
-./3seq -g my3seqTable700 700
+RUN cd scripts/recombination/filtering && \ 
+	./3seq_install.sh
 
 # Set the path
 ENV PATH="/HOME/usher/build:/HOME/kentsource:${PATH}"

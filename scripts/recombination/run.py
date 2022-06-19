@@ -83,8 +83,8 @@ key_file = config["key_file"]
 auth()
 
 # Set ripples job config options
-docker_image = "mrkylesmith/ripples-pipeline:latest"
-boot_disk_size = config["boot_disk_size"]
+docker_image = "mrkylesmith/ripples_pipeline:latest"
+boot_disk_size = str(config["boot_disk_size"])
 instances = config["instances"] # Number of remote machines to parallelize ripples across 
 machine_type = config["machine_type"]
 logging = "gs://{}/logging/{}".format(bucket_id, config["logging"])
@@ -140,7 +140,7 @@ for partition in partitions:
     processes.append({'partition': partition, 'operation_id': info['operation_id']})
 
 completed = 0
-while completed < instances:
+while completed != instances:
    for process in processes:
      partition = process['partition']
      operation_id = process['operation_id']
@@ -164,9 +164,6 @@ subprocess.run(["mkdir", "-p", local_results])
 temp = current + "/merge_results/"
 subprocess.run(["mkdir", "-p", temp])
 
-# File to aggregate all detected recombination events
-recombinants = open(local_results + "/recombinants_{}.txt".format(date), "w")
-
 # Make sure temp directory was created correctly
 if (os.path.isdir(temp) == False):
     print("Local results directory not created. Check naming error")
@@ -176,6 +173,10 @@ if (os.path.isdir(temp) == False):
 remote_results = "gs://{}/{}/*".format(bucket_id, config["results"])
 subprocess.run(["gsutil", "cp", "-r", remote_results, temp])
 
+# File to aggregate all detected recombination events
+recombinants = open(local_results + "/recombinants_{}.txt".format(date), "w")
+unfiltered_recombinants = open(local_results + "/unfiltered_recombinants_{}.txt".format(date), "w")
+
 # Aggregate the results from all remote machines and combine into one final file in 'results/' dir
 for directory in os.listdir(temp):
     subdir = temp + directory 
@@ -184,16 +185,20 @@ for directory in os.listdir(temp):
     files = os.listdir(subdir)
     for file in files:
       # Skip over descendents.tsv files for aggregating recombination events
-      if "final_recombinants.txt" not in file:
-          print("ERROR: Direction contained additional file: ", file)
-          continue
-      f = open(subdir + "/" +  file, "r")
-      for line in f:
+      if "final_recombinants.txt" in file:
+        f1 = open(subdir + "/" +  file, "r")
+        for line in f1:
           # One detected recombinant per line, aggregate all lines in each file
           recombinants.write(line)
-      f.close()
-
+        f1.close()
+      if "recombination.tsv" in file:
+        f2 = open(subdir + "/" +  file, "r")
+        for line in f2:
+          # One detected recombinant per line, aggregate all lines in each file
+          unfiltered_recombinants.write(line)
+        f2.close()
 recombinants.close()
+unfiltered_recombinants.close()
 
 # Remove temp directory 
 subprocess.run(["rm", "-r", temp])
