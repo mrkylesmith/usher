@@ -1,7 +1,6 @@
 #!/bin/python3
 #
 # Launch script to run parallel ripples jobs on GCP
-
 import subprocess
 import sys
 import time
@@ -140,7 +139,7 @@ for partition in partitions:
     processes.append({'partition': partition, 'operation_id': info['operation_id']})
 
 completed = 0
-while completed != instances:
+while completed < instances:
    for process in processes:
      partition = process['partition']
      operation_id = process['operation_id']
@@ -149,7 +148,7 @@ while completed != instances:
      if done:
        completed += 1
      print("partition: {}, operation_id: {}, done: {}".format(partition, operation_id, done))
-   print("{} of {} completed".format(completed, instances))
+   #print("{} of {} completed".format(completed, instances))
    time.sleep(1)
 
 print("All instance jobs have finished.  Aggregating results from remote machines.")
