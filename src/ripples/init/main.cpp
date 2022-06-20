@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
                        "Input mutation-annotated tree file [REQUIRED].")(
         "branch-length,l", po::value<uint32_t>()->default_value(3),
         "Minimum length of the branch to consider to recombination events")(
-        "num-descendants,n", po::value<uint32_t>()->default_value(10),
+        "num-descendants,n", po::value<uint32_t>()->default_value(2),
         "Minimum number of leaves that node should have to be considered for "
         "recombination.");
 

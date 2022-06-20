@@ -13,6 +13,7 @@ import time
 import datetime
 import yaml
 
+
 def get_config():
     with open('ripples.yaml') as f:
       data = yaml.load(f, Loader=yaml.FullLoader)
@@ -94,6 +95,7 @@ metadata = config["metadata"]
 date = config["date"]
 reference = config["reference"]
 raw_sequences = config["raw_sequences"]
+num_descendants = config["num_descendants"]
 
 # Remote location in GCP Storge Bucket to copy filtered recombinants
 #NOTE: Make sure this folder is created in Storage bucket ahead of time.
@@ -107,8 +109,15 @@ if not os.path.isfile("{}/{}".format(current,mat)):
 else:
     print("Input MAT found in local directory.")
 
+if num_descendants == None:
+  init = "ripplesInit -i {} -n ".format(mat)
+elif isinstance(num_descendants, int):
+  init = "ripplesInit -i {} -n {}".format(mat, num_descendants)
+else:
+    print("Check ripples.yaml file configuration for num_descendants. Provide int number of descendents to consider or leave field blank to use default value 2.")
+    exit(1)
+
 # Run ripples init scripts 
-init = "ripplesInit -i {}".format(mat)
 try:
   # Get number of long branches to search
   long_branches = int(subprocess.getoutput(init))
