@@ -125,30 +125,33 @@ partitions = get_partitions(long_branches, instances)
 print("long branches: {}, instances: {}, branches_per_instance: {}".format(long_branches, instances, branches_per_instance))
 print("partitions: {}".format(partitions))
 
+
 processes = []
+completed = []
 for partition in partitions:
 
     start = str(partition[0])
     end = str(partition[1])
     out = "{}_{}".format(start, end)
-   
-    # python3 process.py <version> <tree.pb> <start> <end> <bucket_id> <output_dir> 
-    command = parse_command(mat, start, end, out) 
+
+    # python3 process.py <version> <tree.pb> <start> <end> <bucket_id> <output_dir>
+    command = parse_command(mat, start, end, out)
 
     info = gcloud_run(command)
     processes.append({'partition': partition, 'operation_id': info['operation_id']})
+    completed.append(False)
 
-completed = 0
-while completed < instances:
+while not all(completed):
+   i = 0
    for process in processes:
      partition = process['partition']
      operation_id = process['operation_id']
      info = gcloud_describe(operation_id)
      done = info['done']
      if done:
-       completed += 1
+       completed[i] = True
      print("partition: {}, operation_id: {}, done: {}".format(partition, operation_id, done))
-   #print("{} of {} completed".format(completed, instances))
+     i+=1
    time.sleep(1)
 
 print("All instance jobs have finished.  Aggregating results from remote machines.")
