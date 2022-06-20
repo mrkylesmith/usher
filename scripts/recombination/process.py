@@ -34,7 +34,7 @@ def convert(n):
 def parse_ripples_command(version, mat, start, end):
     # Expecting ripples output (recombination.txt and descendents.txt)
     # in recombination/filtering to start this pipeline
-    command = [version, "-i", mat, "-S", start, "-E", end, "-d", "filtering/data"]
+    command = [version, "-i", mat, "-n", "2", "-S", start, "-E", end, "-d", "filtering/data"]
     return command
 
 # Check starting directory is correct
