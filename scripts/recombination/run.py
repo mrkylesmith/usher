@@ -27,8 +27,16 @@ def auth():
     subprocess.run(cmd2)
 
 def get_partitions(long_branches, instances):
-    per_instance = long_branches//instances
-    partitions = [ (i ,min(i + per_instance - 1, long_branches - 1)) for i in range(0, long_branches, per_instance) ]
+    partitions = []
+    per_instance = long_branches // instances
+    k = 0
+    for i in range(1, instances+1):
+        # Last partition gets extra 
+        if i == instances:
+            partitions.append((k, long_branches))
+            break
+        partitions.append((k, k + per_instance))
+        k += per_instance + 1
     return partitions
 
 def convert(n):
