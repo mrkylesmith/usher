@@ -118,7 +118,7 @@ else:
     print("Input MAT found in local directory.")
 
 if num_descendants == None:
-  init = "ripplesInit -i {} -n ".format(mat)
+  init = "ripplesInit -i {}".format(mat)
 elif isinstance(num_descendants, int):
   init = "ripplesInit -i {} -n {}".format(mat, num_descendants)
 else:

@@ -18,4 +18,4 @@ reference:
 raw_sequences: 
 
 # Ripples parameters [OPTIONAL]. Leave blank to use default values.
-num_descendants:               
+num_descendants:
