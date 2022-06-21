@@ -112,6 +112,8 @@ Set configurations for the current RIPPLES job you want to run in `ripples.yaml`
 
 - `results`: The output directory where RIPPLES will output results on GCP Storage Bucket and locally within interactive Docker shell where RIPPLES job is launched. 
 
+- `num_descendants`: Minimum number of leaves a node should have to be considered for recombination.[OPTIONAL] (Default = 2)
+
 ### GCP Instance Type Options:
 - `instances`: Number of GCP instances that RIPPLES will be parallelized across.  Results will be automatically aggregated into `results` directory on your GCP Storage Bucket and locally when all RIPPLES jobs are complete.
 

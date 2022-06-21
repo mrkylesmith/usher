@@ -22,7 +22,6 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
    apt-get install -y google-cloud-sdk
 
 # gcsfuse
-#ENV GCSFUSE_REPO=gcsfuse-`lsb_release -c -s`
 ENV GCSFUSE_REPO=gcsfuse-focal
 RUN echo "deb http://packages.cloud.google.com/apt $GCSFUSE_REPO main" | sudo tee /etc/apt/sources.list.d/gcsfuse.list && \
   curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add - && \
@@ -45,23 +44,14 @@ RUN conda install mamba -n base -c conda-forge
 RUN mamba install -y -c conda-forge -c bioconda snakemake-minimal numpy pyyaml
 RUN pip3 install chronumental
 
-# Install faToVcf
-#RUN rsync -aP rsync://hgdownload.soe.ucsc.edu/genome/admin/exe/linux.x86_64/faToVcf /usr/bin
-#RUN chmod +x /usr/bin/faToVcf
-
 # Install faSomeRecords
 RUN rsync -aP rsync://hgdownload.soe.ucsc.edu/genome/admin/exe/linux.x86_64/faSomeRecords /usr/bin
 RUN chmod +x /usr/bin/faSomeRecords
 
-#RUN chmod 775 *
 WORKDIR /HOME
 
-#RUN git clone https://github.com/yatisht/usher.git
-#WORKDIR usher
-# TODO: Update this
-RUN git clone https://github.com/mrkylesmith/usher.git
+RUN git clone https://github.com/yatisht/usher.git
 WORKDIR usher
-RUN git checkout ripples_pipeline_dev
 
 RUN ./install/installUbuntu.sh 
 RUN apt-get install -y parallel
