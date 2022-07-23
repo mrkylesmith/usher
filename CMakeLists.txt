@@ -54,6 +54,7 @@ file(GLOB MATUTIL_SRCS "src/matUtils/*.cpp" "src/matUtils/*.hpp")
 file(GLOB RIPPLES_SRCS "src/ripples/*.cpp" "src/ripples/*.hpp")
 file(GLOB RIPPLES_FAST_SRCS "src/ripples/ripples_fast/*.cpp" "src/ripples/ripples_fast/*.hpp")
 file(GLOB RIPPLES_UTILS_SRCS "src/ripples/util/*.cpp" "src/ripples/util/*.hpp")
+file(GLOB AMPLICON_SRCS "src/amplicon/*.cpp" "src/amplicon/*.hpp")
 
 set_source_files_properties(src/mutation_annotated_tree.cpp PROPERTIES COMPILE_FLAGS -O3)
 #set_source_files_properties(src/usher_mapper.cpp PROPERTIES COMPILE_FLAGS -O3)
@@ -257,7 +258,7 @@ else()
         src/mutation_annotated_tree.cpp
         src/usher_mapper.cpp
         src/matUtils/describe.cpp
-				${RIPPLES_UTILS_SRCS}
+        ${RIPPLES_UTILS_SRCS}
         ${PROTO_SRCS}
         ${PROTO_HDRS}
         )
@@ -267,6 +268,15 @@ else()
         src/usher_mapper.cpp
         src/ripples/init/init_pipeline.cpp
         src/ripples/init/main.cpp
+        ${PROTO_SRCS}
+        ${PROTO_HDRS}
+        )
+
+    add_executable(amplicon
+        src/mutation_annotated_tree.cpp
+        src/usher_mapper.cpp
+        src/ripples/util/text_parser.cpp
+        ${AMPLICON_SRCS}
         ${PROTO_SRCS}
         ${PROTO_HDRS}
         )
@@ -380,6 +390,8 @@ TARGET_LINK_LIBRARIES(matUtils PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED
 
 TARGET_LINK_LIBRARIES(ripplesUtils PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 TARGET_LINK_LIBRARIES(ripplesInit PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
+
+TARGET_LINK_LIBRARIES(amplicon PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 
 TARGET_COMPILE_OPTIONS(ripples PRIVATE -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
 TARGET_LINK_LIBRARIES(ripples PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
