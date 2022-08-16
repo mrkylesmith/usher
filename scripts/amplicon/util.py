@@ -70,18 +70,18 @@ def align_seq_template(reference_start):
 
 
 def cigar_table(operator, length, query, alignment_template, query_index):
-  """
-  Modify alignment template for query read given CIGAR string.
+    """
+    Modify alignment template for query read given CIGAR string.
 
-  Args:
-    operator: Type of operation in CIGAR string: "M", "I", "D", "H", "S", "N"
-    length: Length to apply given operation for CIGAR string
-    alignment_template: Alignment of query to reference to update
-    query_index: Position in query that has been aligned.
+    Args:
+      operator: Type of operation in CIGAR string: "M", "I", "D", "H", "S", "N"
+      length: Length to apply given operation for CIGAR string
+      alignment_template: Alignment of query to reference to update
+      query_index: Position in query that has been aligned.
 
-  Returns:
-    Updated alignment template after given CIGAR operation/length is applied
-  """
+    Returns:
+      Updated alignment template after given CIGAR operation/length is applied
+    """
     # "M" Match; nucleotide is present in the reference.
     if operator == 0:
        # Add matching query sequence directly to alignment template
