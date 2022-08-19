@@ -5,7 +5,7 @@ import pysam
 import sys
 from util import *
 
-def sam_to_msa(samfile, msafile):
+def sam_to_msa(samfile, msafile, fastq_name_mapping):
   """
   Function to convert a SAM file containing alignment information to an MSA file.
   Imports from util.py, containing various helper functions to generate MSA file.
@@ -31,6 +31,10 @@ def sam_to_msa(samfile, msafile):
 
   # Amplicon reads will be named uniquely "amplicon_$i", 
   query_name = "amplicon_"
+  # File containing mapping from original amplicon FASTQ naming 
+  # to new naming given for placement
+  fastq_name_mapping_file = open(fastq_name_mapping, "w")
+
   i = 1
   for read in samfile:
     # If no CIGAR string present in SAM file, don't consider read
@@ -90,5 +94,9 @@ def sam_to_msa(samfile, msafile):
     msafile.write(">" + read_name + '\t' + str(query_index) + '\t' + str(read.reference_start + 1) + '\t' + str(read.reference_end) + "\n")
     msafile.write(alignment_template + "\n")
 
+    # Map original FASTQ amplicon name to new assigned amplicon name
+    fastq_name_mapping_file.write(read.query_name + "\t" + read_name + "\n")
+
   msafile.close()
   samfile.close()
+  fastq_name_mapping_file.close()

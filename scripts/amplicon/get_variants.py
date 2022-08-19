@@ -81,6 +81,7 @@ amplicon_reads = "{}/amplicons.dedup.fastq".format(subdir)         # Aggreated/d
 samfile = "{}/amplicons.sam".format(subdir)                        # Output alignment file
 amplicons_msa = "{}/amplicons.fa".format(subdir)                   # Output MSA of all amplicon reads
 output_vcf = "{}/amplicons.vcf".format(subdir)                     # VCF generated from faToVcf
+fastq_name_mapping = "{}/fastq_name_mapping.txt".format(subdir)    # Mapping FASTQ -> placement naming
 
 # Check if directory containing amplicon reads exists.
 if not isdir(input_reads):
@@ -141,7 +142,7 @@ if (os.path.exists(samfile) == False):
     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), samfile)
 
 # Generate MSA file from SAM file
-sam_to_msa(samfile, amplicons_msa)
+sam_to_msa(samfile, amplicons_msa, fastq_name_mapping)
 
 # Check MSA file was generated
 if (os.path.exists(amplicons_msa) == False):
