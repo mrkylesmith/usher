@@ -46,7 +46,7 @@ pushd filtering/data
 awk ' BEGIN {OFS="\t"} {filter=""; 
     if ($11 != "False") filter= "Too_many_mutations_near_INDELs,"; 
     if ($14 != "False") filter= ( filter  "Suspicious_mutation_clump,"); 
-    if ($19 != "False") filter= ( filter "Site_of_informative_sites_clump_INDEL_in_wrong_region,"); 
+    if ($19 != "False") filter= ( filter "Informative_sites_clump,"); 
     if (filter=="") print $1,$2,$3 >"pass.txt"; else print $1,$2,$3,filter >"fail.txt" }' report.txt
 popd
 echo "DONE"
