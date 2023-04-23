@@ -1,13 +1,14 @@
-# GCP credentials [REQUIRED]
+# To run pipeline on GCP, fill in GCP fields below
+# Otherwise leave blank to run pipeline locally
+# GCP credentials
 bucket_id: 
 project_id: 
 key_file: /tmp/keys/
-
-# GCP machine and Storage Bucket config [REQUIRED]
+# GCP machine and Storage Bucket config
 instances: 
-boot_disk_size: 100
-machine_type: 
-logging: 
+boot_disk_size: 50
+machine_type:
+logging:
 
 # Ripples parameters config [REQUIRED]
 version: 
@@ -15,8 +16,12 @@ mat:
 newick:
 metadata:
 date: 
+# Local results output directory, or name of folder on GCP storage bucket
 results: 
 reference:
 
-# Ripples parameters [OPTIONAL]. Leave blank to use default values.
-num_descendants:
+# Additional parameters
+num_descendants: 5
+public_tree: True
+verbose: False
+docker_image:
