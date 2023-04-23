@@ -17,11 +17,13 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 // Expected format for string date: "2022-08-14"
 // Returns int vector of size 3 [year, month, day]
 std::vector<std::string> format_date(std::string date) {
     int date_length = 10; // Only accepting dates in format, eg) 2022-11-09
     if (date.length() != date_length) {
+        std::cout << "[ERROR]: Date incorrectly formatted: " << date << "\n";
         throw std::runtime_error("ERROR: format_date() function. Date not in "
                                  "correct format (date.length() = 10)");
     }
@@ -64,10 +66,12 @@ int elapsed_days(std::string tree_date,
     // Implicit conversion to int to get elapsed days only
     return std::difftime(date_1, date_2) / (60 * 60 * 24);
 }
+
 static void
 write_descendants(const std::unordered_set<std::string> &internal_nodes,
                   MAT::Tree &T, std::ostream &descendants_outfile,
                   std::ostream &samples_outfile) {
+
     auto dfs_ordered_nodes = T.depth_first_expansion();
     std::vector<size_t> to_output_dfs_ids;
     to_output_dfs_ids.reserve(internal_nodes.size());
@@ -97,7 +101,9 @@ write_descendants(const std::unordered_set<std::string> &internal_nodes,
         samples_outfile << n->identifier << "\n";
     }
 }
+
 static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
+                                Recomb_Samples &rs,
                                 std::unordered_set<std::string> &internal_nodes,
                                 MAT::Tree &T, float recomb_rank) {
     outfile << r.recomb_node_id << "\t";
@@ -185,13 +191,22 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
     outfile << r.original_parsimony << "\t";
     outfile << r.parsimony_improvement << "\t";
     outfile << r.informative_position << "\t";
-    outfile << r.filter << "\n";
+    outfile << r.filter << "\t";
+
+    outfile << rs.earliest_sequence << "\t";
+    outfile << rs.latest_sequence << "\t";
+    for (const auto &c : rs.circulating_countries) {
+        outfile << c + ",";
+    }
+    outfile << "\n";
 }
-void write_recombination_list(MAT::Tree &T,
-                              std::vector<Recombinant> &recombinants,
-                              std::vector<Ranked_Recombinant> &ranked_recombs,
-                              std::ofstream &outfile,
-                              std::vector<std::string> &header_list) {
+
+void write_recombination_list(
+    MAT::Tree &T, std::vector<Recombinant> &recombinants,
+    std::vector<Ranked_Recombinant> &ranked_recombs,
+    std::unordered_map<std::string, Recomb_Samples> &recomb_samples,
+    std::ofstream &outfile, std::ofstream &desc_outfile,
+    std::vector<std::string> &header_list, boost::filesystem::path path) {
 
     // Add header for outfile
     for (std::vector<std::string>::iterator it = header_list.begin();
@@ -207,17 +222,15 @@ void write_recombination_list(MAT::Tree &T,
 
     // Create samples output file with the name of all recombinant nodes
     std::string samples_file = "all_trio_nodes.txt";
-    std::ofstream samples_outfile{samples_file};
+    std::ofstream samples_outfile{path / samples_file};
     if (!samples_outfile) {
         throw std::runtime_error(
             "ERROR: Cannot create sample nodes output file.");
     }
-    std::ofstream descendants_outfile_raw("samples_descendants.txt.xz",
-                                          std::ios::out | std::ios::binary);
     boost::iostreams::filtering_streambuf<boost::iostreams::output> outbuf;
     outbuf.push(boost::iostreams::lzma_compressor(
         boost::iostreams::lzma::best_compression));
-    outbuf.push(descendants_outfile_raw);
+    outbuf.push(desc_outfile);
     std::ostream descendants_outfile(&outbuf);
 
     // Create samples output file with the name and all descendants
@@ -239,14 +252,25 @@ void write_recombination_list(MAT::Tree &T,
     for (const auto &rr : ranked_recombs) {
         // Get the Recombinant node and write
         Recombinant r = recombinants[rr.id];
-        write_single_recomb(outfile, r, internal_nodes, T, rr.recomb_rank);
+        Recomb_Samples rs = recomb_samples.at(r.recomb_node_id);
+        write_single_recomb(outfile, r, rs, internal_nodes, T, rr.recomb_rank);
+    }
+    for (const auto &node_id : internal_nodes) {
+        std::vector<std::string> desc_vec = get_node_descendants(T, node_id);
+        auto descendants_csl = boost::algorithm::join(desc_vec, ", ");
+        // 1st Column: node_id
+        descendants_outfile << node_id << "\t";
+        // 2nd column: comma separated list of descendants for node_id
+        descendants_outfile << descendants_csl << "\t";
+        // 3rd column: descendant count for node_id
+        descendants_outfile << desc_vec.size() << "\n";
+        samples_outfile << node_id << "\n";
     }
     outfile.close();
-    write_descendants(internal_nodes, T, descendants_outfile, samples_outfile);
     samples_outfile.close();
     boost::iostreams::close(outbuf);
-    descendants_outfile_raw.close();
 }
+
 static Recombinant parse_recomb(text_parser &results) {
     auto recomb_id = std::string{results.get_value(0)};
     if (std::isdigit(recomb_id.at(0)) == 1) {
@@ -302,11 +326,15 @@ static Recombinant parse_recomb(text_parser &results) {
     r.filter = std::string{results.get_value(21)};
     return r;
 }
+
 std::vector<std::string> get_recombination_info(
     MAT::Tree &T, std::string tree_date,
     std::unordered_map<std::string, std::string> &node_to_inferred_date,
     std::string filtered_recomb_file, std::ofstream &outfile,
-    std::vector<std::string> &header_list) {
+    std::ofstream &desc_outfile, std::vector<std::string> &header_list,
+    bool weight_by_samples,
+    std::unordered_map<std::string, Descendant> &descendant_map,
+    boost::filesystem::path path) {
 
     std::cout << "Opening results file: " << filtered_recomb_file << "\n";
     text_parser results(filtered_recomb_file);
@@ -317,6 +345,10 @@ std::vector<std::string> get_recombination_info(
     // Keep track of all recomb_node_ids and their associated rank
     std::vector<Recombinant> recombinants;
     std::vector<Ranked_Recombinant> ranked_recombs;
+
+    // Recomb node id: Recomb_Samples
+    std::unordered_map<std::string, Recomb_Samples> recomb_samples;
+
     // Get each detected recombinant node from filtration pipeline output
     for (; !results.done(); results.next_line()) {
         auto r = parse_recomb(results);
@@ -349,7 +381,8 @@ std::vector<std::string> get_recombination_info(
         int days = elapsed_days(tree_date, inferred_recomb_date);
 
         Ranked_Recombinant rr = Ranked_Recombinant(recombinants.size());
-        // Weight sequence by recency
+        // Use default ranking method:
+        // 2^-m(R) * sigma(2^-m(s)), for all s in S (set of samples)
         auto weight = [](const int days) {
             int weight = 0;
             for (int i = 30; i < days; i += 30) {
@@ -358,9 +391,64 @@ std::vector<std::string> get_recombination_info(
             return weight;
         };
 
-        // Generate recombinant ranking score
-        auto recomb_rank =
-            recombinant_rank(days, recomb_num_descendants, weight(days));
+        float recomb_rank = 0.0;
+        float sequence_weight = 0.0;
+        Recomb_Samples rs = Recomb_Samples(0.0);
+        int min_days = INT_MAX;
+        int max_days = 0;
+        std::string earliest_desc;
+        std::string latest_desc;
+        std::string earliest_country;
+        std::string latest_country;
+        std::unordered_set<std::string> circulating_countries;
+        if (weight_by_samples) {
+            std::vector<std::string> desc_vec =
+                get_node_descendants(T, r.recomb_node_id);
+            for (const auto &d : desc_vec) {
+                //  Check if descendant is not missing in metadata
+                if (descendant_map.find(d) == descendant_map.end())
+                    continue;
+                Descendant desc = descendant_map.at(d);
+                std::string sample_date = desc.date;
+                circulating_countries.insert(desc.country);
+                //  Calculate number of months since sample was first sequenced
+                //  (0-index)
+                // Only accepting dates in format, eg) 2022-11-09
+                if (sample_date.length() != 10)
+                    continue;
+                int _days = elapsed_days(tree_date, sample_date);
+                if (_days > max_days) {
+                    max_days = _days;
+                    earliest_desc = d;
+                    earliest_country = desc.country;
+                }
+                if (_days < min_days) {
+                    min_days = _days;
+                    latest_desc = d;
+                    latest_country = desc.country;
+                }
+                sequence_weight += pow(2, -weight(_days));
+            }
+            rs.sequence_weight = sequence_weight;
+            rs.earliest_sequence = earliest_desc;
+            rs.earliest_country = earliest_country;
+            rs.latest_sequence = latest_desc;
+            rs.latest_country = latest_country;
+            rs.circulating_countries = circulating_countries;
+            recomb_samples.insert({r.recomb_node_id, rs});
+
+            // Generate recombinant ranking score
+            recomb_rank =
+                default_recombinant_rank(weight(days), sequence_weight);
+        }
+        // Use alternative ranking method, weight by recombinant recency
+        else {
+            // TODO: NOTE, alternate ranking method experimental
+            // Generate recombinant ranking score
+            recomb_rank = alternate_recombinant_rank(
+                days, recomb_num_descendants, weight(days));
+        }
+
         r.recomb_rank = recomb_rank;
         rr.recomb_rank = recomb_rank;
         // Add recombination information to collection of detected
@@ -377,8 +465,8 @@ std::vector<std::string> get_recombination_info(
               });
 
     // Write all final recombinants to output file, in ranked order
-    write_recombination_list(T, recombinants, ranked_recombs, outfile,
-                             header_list);
+    write_recombination_list(T, recombinants, ranked_recombs, recomb_samples,
+                             outfile, desc_outfile, header_list, path);
 
     return trio_node_ids;
 }
@@ -386,7 +474,9 @@ std::vector<std::string> get_recombination_info(
 void get_recombination_info_using_descendants(
     MAT::Tree &T, std::string tree_date, std::string filtered_recomb_file,
     std::unordered_map<std::string, std::string> &descendant_to_date,
-    std::ofstream &outfile, std::vector<std::string> &header_list) {
+    std::ofstream &outfile, std::ofstream &desc_outfile,
+    std::vector<std::string> &header_list, bool weight_by_samples,
+    boost::filesystem::path path) {
 
     std::cout << "Opening results file: " << filtered_recomb_file << "\n";
     text_parser results(filtered_recomb_file);
@@ -394,6 +484,10 @@ void get_recombination_info_using_descendants(
     // Keep track of all recomb_node_ids and their associated rank
     std::vector<Recombinant> recombinants;
     std::vector<Ranked_Recombinant> ranked_recombs;
+
+    // Recomb node id: Recomb_Samples
+    std::unordered_map<std::string, Recomb_Samples> recomb_samples;
+
     // Get each detected recombinant node from filtration pipeline output
     for (; !results.done(); results.next_line()) {
 
@@ -444,11 +538,9 @@ void get_recombination_info_using_descendants(
         Ranked_Recombinant rr = Ranked_Recombinant(recombinants.size());
         // Generate recombinant ranking score, using earliest date from set
         // of recomb node descendants
-        auto recomb_rank = recombinant_rank(
+        auto recomb_rank = alternate_recombinant_rank(
             earliest_days, recomb_num_descendants, weight(earliest_days));
 
-        // TODO: Might still want to report this recombinant, list N/A in rank
-        // field?
         if (recomb_rank == 0.0) {
             // Move to next recombinant, incomplete date information for
             // this recombinant node, for all node descendants in metadata
@@ -470,8 +562,8 @@ void get_recombination_info_using_descendants(
               });
 
     // Write all final recombinants to output file, in ranked order
-    write_recombination_list(T, recombinants, ranked_recombs, outfile,
-                             header_list);
+    write_recombination_list(T, recombinants, ranked_recombs, recomb_samples,
+                             outfile, desc_outfile, header_list, path);
 }
 
 // Same preorder traversal as Chronumental performs to map
@@ -527,6 +619,28 @@ void tsv_to_dict(std::string tsv_file,
     }
 }
 
+void parse_metadata(std::string &tsv_file,
+                    std::unordered_map<std::string, Descendant> &map,
+                    int key_col, int date_col, int country_col, bool header) {
+    text_parser file_handle(tsv_file);
+
+    // If file has header, skip over first header line
+    // Assuming header is just a single first line in TSV file
+    if (header) {
+        file_handle.next_line();
+    }
+
+    for (; !file_handle.done(); file_handle.next_line()) {
+        std::string desc_name = std::string{file_handle.get_value(key_col)};
+        std::string date = std::string{file_handle.get_value(date_col)};
+        std::string country = std::string{file_handle.get_value(country_col)};
+        Descendant d = Descendant();
+        d.date = date;
+        d.country = country;
+        map.insert({desc_name, d});
+    }
+}
+
 // Find a sample that is representative of the given internal node,
 // meaning that it is a descendant of this internal node and shares no, or
 // minimal additional mutations with the internal node
@@ -560,10 +674,10 @@ std::string find_representative_sample(MAT::Tree &T,
 }
 
 std::vector<std::string>
-get_node_descendants(MAT::Tree &T, std::string internal_node_id, int max_desc) {
-
+get_node_descendants(MAT::Tree &T, const std::string &internal_node_id) {
     std::vector<std::string> descendants;
-    descendants.reserve(10000);
+    auto node = T.get_node(internal_node_id);
+    descendants.reserve(T.get_num_leaves(node));
 
     // Get internal node
     MAT::Node *internal_node = T.get_node(internal_node_id);
@@ -571,13 +685,9 @@ get_node_descendants(MAT::Tree &T, std::string internal_node_id, int max_desc) {
     // Get all the descendant nodes for internal node
     std::vector<MAT::Node *> desc_vec;
     desc_vec = T.get_leaves(internal_node_id);
-    int i = 0;
+    // Get all descendants node ids
     for (const auto &d : desc_vec) {
-        if (i == max_desc) {
-            break;
-        }
         descendants.push_back(d->identifier);
-        ++i;
     }
     return descendants;
 }

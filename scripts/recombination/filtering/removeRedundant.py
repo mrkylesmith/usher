@@ -78,9 +78,7 @@ def removeRedundantTrios():
             myOutString += joiner(trioToLine[t])+'\tPASS\n'
         else:
             filtered_out_fh.write(joiner(trioToLine[t]+["redundant,"])+'\n')
-    #open('results/combinedCatOnlyBestWithPValsFinalReportWithInfSitesNoClustersNewTiebreak3seqP02RussPval005RemoveCircular.txt','w').write(myOutString)
-    open('results/filtered_recombinants.txt','w').write(myOutString)
-
+    open('filtering/data/filtered_recombinants.txt','w').write(myOutString)
 
 
 ##########################

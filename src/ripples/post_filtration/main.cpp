@@ -20,13 +20,18 @@ int main(int argc, char **argv) {
         "chronumental-dates,c", po::value<std::string>()->default_value(""),
         "If using Chronumental, give output inferred dates file from running "
         "Chronumental. Otherwise earliest date from recombinant node "
-        "descendants will be used. ")(
-        "metadata,m", po::value<std::string>()->default_value(""),
-        "If not using Chronumental, give MAT metadata file which contains "
-        "dates for all descendants.")(
+        "descendants will be used. ")("metadata,m",
+                                      po::value<std::string>()->required(),
+                                      "MAT metadata file which contains dates "
+                                      "for all descendants. [REQUIRED]")(
+        "weight,w", po::bool_switch()->default_value(false),
+        "Only use recency of recombinant node, not samples, when calculating "
+        "recombinant ranking")(
         "final-recombinants,r", po::value<std::string>()->required(),
         "Output file containing filtered recombinants with all "
-        "information needed for RIVET[REQUIRED].");
+        "information needed for RIVET[REQUIRED].")(
+        "output-directiory,o", po::value<std::string>()->required(),
+        "Output directory to write all output files to[REQUIRED]. ");
 
     po::options_description all_options;
     all_options.add(desc);
@@ -54,6 +59,17 @@ int main(int argc, char **argv) {
     std::string tree_date = vm["date"].as<std::string>();
     std::string chron_dates_file = vm["chronumental-dates"].as<std::string>();
     std::string metadata_file = vm["metadata"].as<std::string>();
+    std::string output_dir = vm["output-directiory"].as<std::string>();
+    bool weight_by_samples = vm["weight"].as<bool>();
+
+    if (weight_by_samples) {
+        std::cout << "Using default ranking method."
+                  << "\n";
+    } else {
+        std::cout << "Alternative ranking method selected, recency of samples "
+                     "not included in ranking recency weight."
+                  << "\n";
+    }
 
     // Load input MAT and uncondense tree
     printf("Loading input MAT file\n");
@@ -65,15 +81,22 @@ int main(int argc, char **argv) {
     std::cout << "Tree contains: " << num_leaves << " leaves."
               << "\n";
 
+    // Create output file directory
+    boost::filesystem::path path(output_dir);
+
     // Create new recombinant output file
     std::ofstream outfile{final_recomb_file};
     if (!outfile) {
         throw std::runtime_error(
             "ERROR: Cannot create final recombination output file.");
     }
-    std::cout << "Retrieving recombinant node parent clade assignments"
-              << "\n";
-    std::cout << "Outfile given: " << final_recomb_file << "\n";
+    // Create new descendants output file
+    std::ofstream desc_outfile(path / "samples_descendants.txt.xz",
+                               std::ios::out | std::ios::binary);
+    if (!desc_outfile) {
+        throw std::runtime_error(
+            "ERROR: Cannot create sample descendants output file. ");
+    }
 
     // Output file columns
     std::vector<std::string> header_list = {"Recombinant Node ID",
@@ -96,7 +119,10 @@ int main(int argc, char **argv) {
                                             "Original Parsimony Score",
                                             "Parsimony Score Improvement",
                                             "Informative Site Positions",
-                                            "Filter"};
+                                            "Quality Control (QC) Flags",
+                                            "Earliest sequence",
+                                            "Most recent sequence",
+                                            "Countries circulating"};
 
     std::vector<std::string> trio_node_ids;
 
@@ -107,20 +133,35 @@ int main(int argc, char **argv) {
         std::cout << "Using Chronumental for recombinant node ranking."
                   << "\n";
 
+        std::cout << "Loading Chronumental inferred dates file."
+                  << "\n";
+
         // Load inferred dates for internal nodes from Chronumental output
         std::unordered_map<std::string, std::string> node_to_inferred_date;
         node_to_inferred_date.reserve(num_leaves);
-
         tsv_to_dict(chron_dates_file, node_to_inferred_date, 0, 1, true);
 
+        std::cout << "Loading input metadata file."
+                  << "\n";
+        // Load MAT metadata into dictionary to get dates for descendants
+
+        // Sample name : Descendant struct (containing extra data about desc)
+        std::unordered_map<std::string, Descendant> descendants_map;
+        descendants_map.reserve(num_leaves);
+        parse_metadata(metadata_file, descendants_map, 0, 2, 3, true);
+
+        std::cout
+            << "Fetching information about each recombinant and begin ranking."
+            << "\n";
         // NOTE: Chronumental will preserve internal node id naming using Newick
         // generated from  matUtils extract. Get information for each column for
         // all filtered recombinants, including rank score, and output to
         // outfile.  Return a vector of string node ids for all trio nodes
         // (recomb, donor, acceptor)
-        trio_node_ids =
-            get_recombination_info(T, tree_date, node_to_inferred_date,
-                                   filtered_recomb_file, outfile, header_list);
+        trio_node_ids = get_recombination_info(
+            T, tree_date, node_to_inferred_date, filtered_recomb_file, outfile,
+            desc_outfile, header_list, weight_by_samples, descendants_map,
+            path);
     }
     // If no Chronumental inferred dates file given, use alternate method
     // of chosing recombinant node descendant with earliest date
@@ -150,13 +191,12 @@ int main(int argc, char **argv) {
         // nodes (recomb, donor, acceptor)
         get_recombination_info_using_descendants(
             T, tree_date, filtered_recomb_file, descendant_to_date, outfile,
-            header_list);
+            desc_outfile, header_list, weight_by_samples, path);
     }
-
     std::cout << "Final recombination results written to:  "
-              << final_recomb_file << "\n";
-
+              << path / final_recomb_file << "\n";
     outfile.close();
+    desc_outfile.close();
     return 0;
 }
 

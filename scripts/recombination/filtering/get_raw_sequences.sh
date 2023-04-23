@@ -70,24 +70,31 @@ if [ "$#" -ne 8 ]; then
 		exit 1
 fi
 
-
-echo "Tree date: $TREE_DATE"
-echo "Input: $INPUT"
-echo "DESCENDENTS: $DESCENDENTS"
-echo "BUCKET ID: $BUCKET_ID"
-echo "Output directory: $OUTPUT"
-
-# Copy all sequence files needed into local directory
-# NCBI sequences
-
-# CogUK sequences
-
-
-# GISAID sequences, protobuf and metadata
-gsutil cp gs://$BUCKET_ID/gisaidAndPublic.$TREE_DATE.masked.pb $INPUT
-gsutil cp gs://$BUCKET_ID/gisaidAndPublic.$TREE_DATE.metadata.tsv.gz $INPUT
-gsutil cp gs://$BUCKET_ID/metadata_batch_$TREE_DATE.tsv.gz $INPUT
-
+if [ "$BUCKET_ID" == "None" ]
+then
+    echo "Running QC and filtration checks on-premise";
+    # NCBI sequences
+		cp genbank.fa.xz $INPUT
+    # CogUK sequences
+		cp cog_all.fasta.xz $INPUT
+    # GISAID sequences, protobuf and metadata, if running private tree
+    cp gisaidAndPublic.$TREE_DATE.masked.pb $INPUT
+    cp gisaidAndPublic.$TREE_DATE.metadata.tsv.gz $INPUT
+    cp metadata_batch_$TREE_DATE.tsv.gz $INPUT
+		cp gisaid_fullNames_$TREE_DATE.fa.xz $INPUT
+else
+		echo "BUCKET_ID given, running on GCP instance";
+    # Copy all sequence files needed into local directory
+    # NCBI sequences
+		gsutil cp gs://$BUCKET_ID/genbank.fa.xz $INPUT
+    # CogUK sequences
+		gsutil cp gs://$BUCKET_ID/cog_all.fasta.xz $INPUT
+    # GISAID sequences, protobuf and metadata
+    gsutil cp gs://$BUCKET_ID/gisaidAndPublic.$TREE_DATE.masked.pb $INPUT
+    gsutil cp gs://$BUCKET_ID/gisaidAndPublic.$TREE_DATE.metadata.tsv.gz $INPUT
+    gsutil cp gs://$BUCKET_ID/metadata_batch_$TREE_DATE.tsv.gz $INPUT
+		gsutil cp gs://$BUCKET_ID/gisaid_fullNames_$TREE_DATE.fa.xz $INPUT
+fi
 
 # Create output log files
 LOG_FILE="log_$TREE_DATE.log"
@@ -99,14 +106,14 @@ sort -u $DESCENDENTS > $OUTPUT/allDescendants.uniq.txt
 #echo `(wc -l $DESCENDENTS) - (wc -l $OUTPUT/allDescendants.uniq.txt)` >> $OUTPUT/$LOG_FILE
 
 grep EPI_ISL $OUTPUT/allDescendants.uniq.txt | awk -F\| '{print $2 "\t" $0;}' > $OUTPUT/allDescendants.epiToName
-wc -l $OUTPUT/allDescendants.epiToName
+#wc -l $OUTPUT/allDescendants.epiToName
 
 
 grep -v EPI_ISL $OUTPUT/allDescendants.uniq.txt \
 | egrep '[A-Z]{2}[0-9]{6}\.[0-9]+' \
 | awk -F\| '{ if ($3 == "") { print $1 "\t" $0; } else { print $2 "\t" $0; } }' \
 > $OUTPUT/allDescendants.gbAccToName
-wc -l $OUTPUT/allDescendants.gbAccToName
+#wc -l $OUTPUT/allDescendants.gbAccToName
 
 
 grep -v EPI_ISL $OUTPUT/allDescendants.uniq.txt \
@@ -114,34 +121,23 @@ grep -v EPI_ISL $OUTPUT/allDescendants.uniq.txt \
 | egrep '^(England|Northern|Scotland|Wales)' \
 | awk -F\| '{print $1 "\t" $0;}' \
 > $OUTPUT/allDescendants.cogToName
-wc -l $OUTPUT/allDescendants.cogToName
+#wc -l $OUTPUT/allDescendants.cogToName
 
+chmod +x filtering/tawk
 zcat $INPUT/metadata_batch_$TREE_DATE.tsv.gz \
 | grep -Fwf <(cut -f 1 $OUTPUT/allDescendants.epiToName) \
-| tawk '{print $3, $1 "|" $3 "|" $5;}' \
+| filtering/tawk '{print $3, $1 "|" $3 "|" $5;}' \
 > $OUTPUT/allDescendants.epiToFastaName
-wc -l $OUTPUT/allDescendants.epiToFastaName
+#wc -l $OUTPUT/allDescendants.epiToFastaName
 
-{
-faSomeRecords <( gsutil cp gs://$BUCKET_ID/gisaid_fullNames_$TREE_DATE.fa.xz | xzcat ) \
-    <(cut -f 2 $OUTPUT/allDescendants.epiToFastaName) $OUTPUT/allDescendants.gisaid.fa
+faSomeRecords <( xzcat $INPUT/gisaid_fullNames_$TREE_DATE.fa.xz ) \
+<(cut -f 2 $OUTPUT/allDescendants.epiToFastaName) $OUTPUT/allDescendants.gisaid.fa
 
-#fastaSeqCount $OUTPUT/allDescendants.gisaid.fa
-} &
+faSomeRecords <( xzcat $INPUT/genbank.fa.xz ) \
+<(cut -f 1 $OUTPUT/allDescendants.gbAccToName) $OUTPUT/allDescendants.genbank.fa
 
-{
-faSomeRecords <(gsutil cp gs://$BUCKET_ID/genbank.fa.xz - | xzcat ) \
-    <(cut -f 1 $OUTPUT/allDescendants.gbAccToName) $OUTPUT/allDescendants.genbank.fa
-
-#fastaSeqCount $OUTPUT/allDescendants.genbank.fa
-} &
-
-{
-faSomeRecords <( gsutil cp gs://$BUCKET_ID/cog_all.fasta.xz - | xzcat ) \
+faSomeRecords <( xzcat $INPUT/cog_all.fasta.xz ) \
 <(cut -f 1 $OUTPUT/allDescendants.cogToName) $OUTPUT/allDescendants.cog.fa
-
-#fastaSeqCount $OUTPUT/allDescendants.cog.fa
-} &
 
 join -t$'\t' <(sort $OUTPUT/allDescendants.epiToFastaName) <(sort $OUTPUT/allDescendants.epiToName) \
 | cut -f 2,3 > $OUTPUT/allDescendants.rename

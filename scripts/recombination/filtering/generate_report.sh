@@ -38,6 +38,7 @@ python3 filtering/recombination_server.py $cores &
 python3 filtering/relevent_sites_server.py $cores &
 python3 filtering/sampleinfo_server.py $cores &
 sleep 1
+
 { 
 ls filtering/fastas/AlignedRecombs | parallel -j $core_less_one python3 filtering/checkmutant.py {.} -r
 } &> check_mutant_log
@@ -49,4 +50,8 @@ awk ' BEGIN {OFS="\t"} {filter="";
     if ($19 != "False") filter= ( filter "Informative_sites_clump,"); 
     if (filter=="") print $1,$2,$3 >"pass.txt"; else print $1,$2,$3,filter >"fail.txt" }' report.txt
 popd
+# Clean up
+rm filtering/data/allRelevantNodesInfSites.sock
+rm filtering/data/combinedCatOnlyBestWithPVals.sock
+rm filtering/data/sampleInfo.sock
 echo "DONE"
