@@ -8,7 +8,8 @@ reference="$3"
 results="$4"
 out="$5"
 bucket_id="$6"
-LOGGING="$results/logging"
+LOGGING="$PWD/logging"
+mkdir -p $LOGGING
 
 if [ "$bucket_id" == "None" ]
 then

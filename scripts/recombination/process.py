@@ -27,7 +27,6 @@ date = sys.argv[9]
 # Log to output runtime information for each partition
 logging = sys.argv[10]  
 num_descendants = sys.argv[11]
-
 pipeline_dir = os.getcwd()
 
 def convert(n):
@@ -69,7 +68,7 @@ with open("ripples_stdout", "w") as  ripples_stdout:
 stop_ripples = timeit.default_timer()
 # Start runtime for filtration pipeline
 start_filtration = timeit.default_timer()
-filtration = ["./run_ripples_filtration.sh", mat, date, reference, results, out, bucket_id]
+filtration = ["./run_ripples_filtration.sh", mat, str(date), reference, results, out, bucket_id]
 # Run putative recombinants through post-processing filtration pipeline
 subprocess.run(filtration)
 

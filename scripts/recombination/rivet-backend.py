@@ -41,6 +41,7 @@ def main():
   PUBLIC_TREE = config["public_tree"]
   PATH = str(os.getcwd())
   RESULTS = PATH + "/" + config["results"]
+  LOGGING = PATH + "/{}".format(config["logging"])
 
   # Check that executables found
   if shutil.which("ripplesInit") is None or shutil.which("ripplesUtils") is None:
@@ -70,14 +71,10 @@ def main():
           print("Creating output {} folder to save all backend pipeline outputs".format(config["results"]))
           # Create results directory 
           os.makedirs(RESULTS, exist_ok=True)
-          LOGGING = RESULTS
           # Create logging directory
-          if (LOGGING.endswith('/')):
-              os.makedirs(LOGGING + "logging", exist_ok=True)
-          else:
-              os.makedirs(LOGGING + "/" + "logging", exist_ok=True)
+          os.makedirs(LOGGING, exist_ok=True)
       else:
-          print(colored("[ERROR] Fill in 'results' field in YAML file where output files will be written", 'red'))
+          print(colored("[ERROR] Fill in 'results' and 'logging' fields in YAML file where output files will be written", 'red'))
           exit(1)
 
       # Check that necessary sequence files are present in current directory
@@ -170,13 +167,13 @@ def main():
       print("Created empty GCP storage bucket folder for results: {}".format(config["results"]))
 
       # Copy over protobuf and metadata file from GCP storage bucket to local container
-      if not os.path.isfile("{}/{}".format(PATH,mat)):
+      if not os.path.isfile("{}/{}".format(PATH, mat)):
           print("Copying input MAT: {} from GCP Storage bucket into local directory in container.".format(mat))
           subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, mat), PATH])
       else:
           print("Input MAT found in local directory.")
 
-      if not os.path.isfile("{}/{}".format(PATH,metadata)):
+      if not os.path.isfile("{}/{}".format(PATH, metadata)):
           print("Copying input MAT metadata: {} from GCP Storage bucket into local directory in container.".format(metadata))
           subprocess.run(["gsutil", "cp", "gs://{}/{}".format(bucket_id, metadata), PATH])
       else:
@@ -306,12 +303,16 @@ def main():
       runtime_log.write("Total runtime searching {} tree with {} long branches:{}{}  (Hours:Minutes:Seconds){}".format(date, long_branches, '\t', str(timedelta(seconds=stop - start)), '\n'))
       runtime_log.close()
 
+
       # Final filtered results file
       if not os.path.isdir("{}/results".format(RESULTS)):
           os.makedirs("{}/results".format(RESULTS), exist_ok=True)
       if os.path.isfile("{}/filtering/data/filtered_recombinants.txt".format(PATH)):
           os.rename("{}/filtering/data/filtered_recombinants.txt".format(PATH),"{}/results/filtered_recombinants_{}.txt".format(RESULTS, date))
       print(colored("QC filtration pipeline complete", "green"))
+
+  # Move logging directory into results directory
+  shutil.move(LOGGING, RESULTS)
 
   # Check to make sure Chronumental job finished successfully
   while(p1.is_alive()):
