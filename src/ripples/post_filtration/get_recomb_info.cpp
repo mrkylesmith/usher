@@ -10,6 +10,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <string>
 #include <string_view>
 #include <time.h>
@@ -198,6 +199,10 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
     for (const auto &c : rs.circulating_countries) {
         outfile << c + ",";
     }
+    outfile << "\t";
+    for (const auto &s : rs.sampled_descendants) {
+        outfile << s + ",";
+    }
     outfile << "\n";
 }
 
@@ -327,7 +332,7 @@ static Recombinant parse_recomb(text_parser &results) {
     return r;
 }
 
-std::vector<std::string> get_recombination_info(
+void get_recombination_info(
     MAT::Tree &T, std::string tree_date,
     std::unordered_map<std::string, std::string> &node_to_inferred_date,
     std::string filtered_recomb_file, std::ofstream &outfile,
@@ -401,9 +406,13 @@ std::vector<std::string> get_recombination_info(
         std::string earliest_country;
         std::string latest_country;
         std::unordered_set<std::string> circulating_countries;
+
         if (weight_by_samples) {
             std::vector<std::string> desc_vec =
                 get_node_descendants(T, r.recomb_node_id);
+            rs.sampled_descendants =
+                sample_descendants(T, r.recomb_node_id, desc_vec);
+
             for (const auto &d : desc_vec) {
                 //  Check if descendant is not missing in metadata
                 if (descendant_map.find(d) == descendant_map.end())
@@ -467,8 +476,6 @@ std::vector<std::string> get_recombination_info(
     // Write all final recombinants to output file, in ranked order
     write_recombination_list(T, recombinants, ranked_recombs, recomb_samples,
                              outfile, desc_outfile, header_list, path);
-
-    return trio_node_ids;
 }
 
 void get_recombination_info_using_descendants(
@@ -671,6 +678,23 @@ std::string find_representative_sample(MAT::Tree &T,
 
     // Return the sample with fewest additional mutations
     return rep_samples[0].node_id;
+}
+
+std::vector<std::string>
+sample_descendants(MAT::Tree &T, std::string recomb_node_id,
+                   std::vector<std::string> &desc_vec) {
+
+    std::shuffle(desc_vec.begin(), desc_vec.end(),
+                 std::default_random_engine(0));
+
+    // Select 10 samples to use for UShER.bio integration on RIVET frontend
+    std::vector<std::string> sampled_desc;
+
+    // TODO: Sample at least 2 with LCA
+    std::sample(desc_vec.begin(), desc_vec.end(),
+                std::back_inserter(sampled_desc), 10,
+                std::mt19937{std::random_device{}()});
+    return sampled_desc;
 }
 
 std::vector<std::string>

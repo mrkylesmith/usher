@@ -72,13 +72,19 @@ def check_config_format(config, LOCAL_PIPELINE):
             if config[p[0]] is None or not isinstance(config[p[0]], p[1]):
                 return (True, p[0], p[1])
 
-def aggregate_results(bucket_id, results_dir, date, local_results):
+def aggregate_results(bucket_id, results_dir, date):
     """
     Aggregate results locally from remote GCP node instances
     """
     current = str(os.getcwd())
+    local_results = current + "/{}".format(results_dir)
+    # Create local results output directory
+    if os.path.isdir(local_results) is False:
+        os.makedirs(local_results)
+        os.makedirs("{}/results".format(local_results))
+
     # Create local temporary directory to copy remote results and aggregate 
-    temp = current + "/merge_results/"
+    temp = local_results + "/merge_results/"
     os.makedirs(temp)
 
     # Make sure temp directory was created correctly
@@ -123,8 +129,6 @@ def aggregate_results(bucket_id, results_dir, date, local_results):
     recombinants.close()
     descendants.close()
     unfiltered_recombinants.close()
-    # Remove temp directory 
-    os.rmdir(temp)
 
 def run_ripples_locally(version, mat, num_descendants):
     """
@@ -162,7 +166,7 @@ def build_taxonium_tree(mat, metadata, date, taxonium_config, RESULTS):
                 ]
     try:
         subprocess.run(build_taxonium_tree)
-        shutil.move(taxonium_file, "{}/{}".format(RESULTS, taxonium_file))
+        shutil.move(taxonium_file, "{}/results/{}".format(RESULTS, taxonium_file))
         print(colored("[SUCCESS]: Taxonium file written to: {}".format(taxonium_file), 'green'))
     except subprocess.CalledProcessError as e:
         print(e.output)
@@ -196,7 +200,7 @@ def create_bucket_folder(project_id, bucket_id, path_from_bucket_root, key_file)
 def convert(n):
     return str(datetime.timedelta(seconds = n))
 
-def parse_command(mat, start, end, out, logging, bucket_id, results, reference, date, num_descendants):
+def parse_command(version, mat, start, end, out, logging, bucket_id, results, reference, date, num_descendants):
     command = "python3 process.py {} {} {} {} {} {} {} {} {} {} {}".format(version,
             mat, start, end, out, bucket_id, results, reference, date, logging, num_descendants)
     return command
@@ -224,7 +228,7 @@ def post_process(mat, filtration_results_file, chron_dates_file, date, recomb_ou
     cmd = ["post_filtration", "-i", mat, "-f", filtration_results_file, "-c", chron_dates_file, "-d", date, "-r", recomb_output_file, "-w", "-m", metadata, "-o", output_dir]
     return cmd
 
-def gcloud_run(command, log, bucket_id, machine_type, docker_image):
+def gcloud_run(command, log, bucket_id, machine_type, docker_image, boot_disk_size):
     cmd = ["gcloud", "beta", "lifesciences", "pipelines", "run",
         "--location", "us-central1",
         "--regions", "us-central1",

@@ -40,6 +40,7 @@ def main():
   LOCAL_PIPELINE = False
   PUBLIC_TREE = config["public_tree"]
   PATH = str(os.getcwd())
+  RESULTS = PATH + "/" + config["results"]
 
   # Check that executables found
   if shutil.which("ripplesInit") is None or shutil.which("ripplesUtils") is None:
@@ -68,7 +69,6 @@ def main():
       if config["results"] is not None:
           print("Creating output {} folder to save all backend pipeline outputs".format(config["results"]))
           # Create results directory 
-          RESULTS = PATH + "/" + config["results"] 
           os.makedirs(RESULTS, exist_ok=True)
           LOGGING = RESULTS
           # Create logging directory
@@ -231,9 +231,9 @@ def main():
 
           # The following command gets executed on remote machine: 
           # python3 process.py <version> <mat> <start> <end> <out> <bucket_id> <results> <reference> <date> <logging> <num_descendants>
-          command = utils.parse_command(mat, start_range, end_range, out, logging, bucket_id, results, reference, date, num_descendants)
+          command = utils.parse_command(version, mat, start_range, end_range, out, logging, bucket_id, results, reference, date, num_descendants)
 
-          info = utils.gcloud_run(command, log, bucket_id, machine_type, docker_image)
+          info = utils.gcloud_run(command, log, bucket_id, machine_type, docker_image, boot_disk_size)
           processes.append({'partition': partition, 'operation_id': info['operation_id']})
           completed.append(False)
       # Start total runtime for all instances running in parallel 
@@ -261,7 +261,7 @@ def main():
       runtime_log.close()
       subprocess.run(["gsutil", "cp", "aggregate_runtime.log", "gs://{}/{}".format(bucket_id, logging)])
       # Aggregate results from each GCP instance locally
-      utils.aggregate_results(bucket_id, config["results"], date, RESULTS)
+      utils.aggregate_results(bucket_id, config["results"], date)
   
   if LOCAL_PIPELINE:
       print(colored("Beginning recombination inference on premise", "green", attrs=['reverse']))
@@ -308,11 +308,10 @@ def main():
 
       # Final filtered results file
       if not os.path.isdir("{}/results".format(RESULTS)):
-          shutil.move(PATH + "/results", RESULTS)
-      if os.path.isfile("{}/results/filtered_recombinants.txt".format(RESULTS)):
-          os.rename("{}/results/filtered_recombinants.txt".format(RESULTS),"{}/results/filtered_recombinants_{}.txt".format(RESULTS, date))
+          os.makedirs("{}/results".format(RESULTS), exist_ok=True)
+      if os.path.isfile("{}/filtering/data/filtered_recombinants.txt".format(PATH)):
+          os.rename("{}/filtering/data/filtered_recombinants.txt".format(PATH),"{}/results/filtered_recombinants_{}.txt".format(RESULTS, date))
       print(colored("QC filtration pipeline complete", "green"))
-
 
   # Check to make sure Chronumental job finished successfully
   while(p1.is_alive()):
@@ -335,12 +334,11 @@ def main():
   except:
       print("[Error] Ranking unsuccessful, check formatting, rerun ranking with 'post_filtration --help'", "red")
       exit(1)
-
-  node_to_extract_file = "{}/all_trio_nodes.txt".format(RESULTS)
-  cmd="sort -u <(cut -f 1 {0} |tail -n +2 ) <(cut -f 2 {0} |tail -n +2 ) <(cut -f 3 {0} |tail -n +2 ) > {1}".format(recomb_output_file,node_to_extract_file)
-  subprocess.run(["bash","-c",cmd])
+  node_to_extract_file = "{}/results/all_trio_nodes.txt".format(RESULTS)
+  #cmd="sort -u <(cut -f 1 {0} |tail -n +2 ) <(cut -f 2 {0} |tail -n +2 ) <(cut -f 3 {0} |tail -n +2 ) > {1}".format(recomb_output_file,node_to_extract_file)
+  #subprocess.run(["bash","-c",cmd])
   # Create VCF file of all trio sequences
-  subprocess.run(["matUtils","extract","-i",mat,"-s",node_to_extract_file,"-v","{}/trios.vcf".format(RESULTS)])
+  subprocess.run(["matUtils","extract","-i",mat,"-s",node_to_extract_file,"-v","{}/results/trios.vcf".format(RESULTS)])
 
   # If running public tree, build Taxonium tree jsonl file 
   if PUBLIC_TREE:

@@ -8,14 +8,14 @@ reference="$3"
 results="$4"
 out="$5"
 bucket_id="$6"
+LOGGING="$results/logging"
 
 if [ "$bucket_id" == "None" ]
 then
     echo "Running QC and filtration checks on-premise";
     mkdir -p $results/$out
-		LOGGING="$results/logging"
 else
-		echo "BUCKET_ID not given, running on GCP instance";
+		echo "BUCKET_ID given, running on GCP instance";
     # Create output results directories
     mkdir -p results
     mkdir -p results/$out
@@ -35,6 +35,7 @@ echo "getAllNodes Completed. Retrieved all relevant nodes."
 
 # Generates allRelevantNodes.vcf
 matUtils extract -i $mat -s filtering/data/allRelevantNodeNames.txt -v filtering/data/allRelevantNodes.vcf -T 10
+
 {
 python3 filtering/getABABA.py
 

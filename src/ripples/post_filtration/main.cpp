@@ -83,7 +83,6 @@ int main(int argc, char **argv) {
 
     // Create output file directory
     boost::filesystem::path path(output_dir);
-
     // Create new recombinant output file
     std::ofstream outfile{final_recomb_file};
     if (!outfile) {
@@ -122,7 +121,8 @@ int main(int argc, char **argv) {
                                             "Quality Control (QC) Flags",
                                             "Earliest sequence",
                                             "Most recent sequence",
-                                            "Countries circulating"};
+                                            "Countries circulating",
+                                            "Sampled Descendants"};
 
     std::vector<std::string> trio_node_ids;
 
@@ -158,10 +158,11 @@ int main(int argc, char **argv) {
         // all filtered recombinants, including rank score, and output to
         // outfile.  Return a vector of string node ids for all trio nodes
         // (recomb, donor, acceptor)
-        trio_node_ids = get_recombination_info(
-            T, tree_date, node_to_inferred_date, filtered_recomb_file, outfile,
-            desc_outfile, header_list, weight_by_samples, descendants_map,
-            path);
+        // NOW
+        get_recombination_info(T, tree_date, node_to_inferred_date,
+                               filtered_recomb_file, outfile, desc_outfile,
+                               header_list, weight_by_samples, descendants_map,
+                               path);
     }
     // If no Chronumental inferred dates file given, use alternate method
     // of chosing recombinant node descendant with earliest date
@@ -194,9 +195,8 @@ int main(int argc, char **argv) {
             desc_outfile, header_list, weight_by_samples, path);
     }
     std::cout << "Final recombination results written to:  "
-              << path / final_recomb_file << "\n";
+              << final_recomb_file << "\n";
     outfile.close();
     desc_outfile.close();
     return 0;
 }
-

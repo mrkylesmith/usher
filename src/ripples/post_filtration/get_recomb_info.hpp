@@ -52,6 +52,7 @@ struct Recomb_Samples {
     std::string latest_sequence;
     std::string latest_country;
     std::unordered_set<std::string> circulating_countries;
+    std::vector<std::string> sampled_descendants;
 
     Recomb_Samples(float w) { sequence_weight = 0.0; }
 };
@@ -75,7 +76,7 @@ void write_recombination_list(
     std::vector<Recombinant> &filtered_out_recombs,
     boost::filesystem::path path);
 
-std::vector<std::string> get_recombination_info(
+void get_recombination_info(
     MAT::Tree &T, std::string tree_date,
     std::unordered_map<std::string, std::string> &node_to_inferred_date,
     std::string filtered_recomb_file, std::ofstream &outfile,
@@ -129,5 +130,9 @@ get_node_descendants(MAT::Tree &T, const std::string &internal_node_id);
 void parse_metadata(std::string &tsv_file,
                     std::unordered_map<std::string, Descendant> &map,
                     int key_col, int date_col, int country_col, bool header);
+
+std::vector<std::string>
+sample_descendants(MAT::Tree &T, std::string recomb_node_id,
+                   std::vector<std::string> &desc_vec);
 
 #endif
