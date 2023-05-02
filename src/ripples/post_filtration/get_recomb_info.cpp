@@ -167,6 +167,12 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
     outfile << acceptor_clade << "\t";
     outfile << acceptor_lineage << "\t";
 
+    // Write recombinant node Chronumental inferred date
+    outfile << r.inferred_date << "\t";
+
+    // Write recombinant node ranking score (increasing order)
+    outfile << recomb_rank << "\t";
+
     // Find representative sample with no (or minimal) number of
     // additional mutations compared to internal trio node
     auto recomb_rep_sample = find_representative_sample(T, r.recomb_node_id);
@@ -182,12 +188,6 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
 
     // Write 3SEQ P-value
     outfile << r.p_value_3seq << "\t";
-
-    // Write recombinant node Chronumental inferred date
-    outfile << r.inferred_date << "\t";
-
-    // Write recombinant node ranking score (increasing order)
-    outfile << recomb_rank << "\t";
 
     outfile << r.original_parsimony << "\t";
     outfile << r.parsimony_improvement << "\t";

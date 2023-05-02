@@ -42,8 +42,8 @@ ENV PATH="/root/miniconda3/bin:${PATH}"
 
 RUN conda install mamba -n base -c conda-forge
 RUN mamba install -y -c conda-forge -c bioconda snakemake-minimal numpy pyyaml
-RUN pip3 install chronumental google-cloud-storage
-
+RUN pip3 install chronumental google-cloud-storage taxoniumtools termcolor wget
+ 
 # Install faSomeRecords
 RUN rsync -aP rsync://hgdownload.soe.ucsc.edu/genome/admin/exe/linux.x86_64/faSomeRecords /usr/bin
 RUN chmod +x /usr/bin/faSomeRecords
