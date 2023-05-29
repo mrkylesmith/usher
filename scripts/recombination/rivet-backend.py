@@ -41,7 +41,7 @@ def main():
   PUBLIC_TREE = config["public_tree"]
   PATH = str(os.getcwd())
   RESULTS = PATH + "/" + config["results"]
-  LOGGING = PATH + "/{}".format(config["logging"])
+  LOGGING = PATH + "/{}/logging".format(config["results"])
 
   # Check that executables found
   if shutil.which("ripplesInit") is None or shutil.which("ripplesUtils") is None:
@@ -149,7 +149,8 @@ def main():
       # Number of remote machines to parallelize ripples across 
       instances = config["instances"]
       machine_type = config["machine_type"]
-      logging = config["logging"]
+      #logging = config["logging"]
+      logging = "logging"
       
       # Remote location in GCP Storge Bucket to copy filtered recombinants
       results = "gs://{}/{}".format(bucket_id, config["results"])
@@ -160,7 +161,7 @@ def main():
 
       # Create remote logging folder
       utils.create_bucket_folder(project_id, bucket_id, logging, key_file)
-      print("Created empty GCP storage bucket folder for logging: {}".format(config["logging"]))
+      print("Created empty GCP storage bucket folder for logging: {}".format(logging)
 
       # Create remote results folder
       utils.create_bucket_folder(project_id, bucket_id, config["results"], key_file)
@@ -180,9 +181,8 @@ def main():
           print("Input MAT metadata found in local directory.")
 
   # Generate newick tree input for Chronumental, if doesn't exist already
-  if not os.path.isfile("{}/{}".format(PATH, newick)):
-      print("Generating newick file from MAT using matUtils extract")
-      utils.newick_from_mat(mat, newick)
+  print("Generating newick file from MAT using matUtils extract")
+  utils.newick_from_mat(mat, newick)
   print(colored("Newick tree generated: {}".format(newick), "green"))
 
   # Launch Chronumental job locally
@@ -292,7 +292,7 @@ def main():
       start_filtration = timeit.default_timer()
 
       # Run putative recombinants through post-processing filtration pipeline
-      filtration = ["./run_ripples_filtration.sh", mat, str(date), reference, RESULTS, out, str(bucket_id)]
+      filtration = ["./run_ripples_filtration.sh", mat, str(date), reference, RESULTS, out, str(bucket_id), LOGGING]
       subprocess.run(filtration)
 
       # Job finished, log runtime
@@ -312,7 +312,7 @@ def main():
       print(colored("QC filtration pipeline complete", "green"))
 
   # Move logging directory into results directory
-  shutil.move(LOGGING, RESULTS)
+  #shutil.move(LOGGING, RESULTS)
 
   # Check to make sure Chronumental job finished successfully
   while(p1.is_alive()):

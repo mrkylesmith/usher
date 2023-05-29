@@ -66,7 +66,7 @@ def check_config_format(config, LOCAL_PIPELINE):
         # Check to make sure all necessary GCP config settings are provided
         parameters = [("bucket_id", str), ("project_id", str), ("key_file", str), 
                       ("instances", int), ("boot_disk_size", int),
-                      ("machine_type", str), ("logging", str)]
+                      ("machine_type", str)]
         for p in parameters:
             # If the field is empty or wrong type, exit and print error message
             if config[p[0]] is None or not isinstance(config[p[0]], p[1]):

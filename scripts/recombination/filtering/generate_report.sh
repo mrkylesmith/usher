@@ -5,6 +5,7 @@
 bucket_id="$1"
 date="$2"
 reference="$3"
+LOGGING="$4"
 startDir=$PWD
 cores=`grep -c ^processor /proc/cpuinfo`
 
@@ -27,7 +28,7 @@ python3 filtering/analyzerecomb.py -a
 cd filtering/fastas/OrderedRecombs
 {
     ls . |  parallel -j $cores "mafft --auto {} > ../AlignedRecombs/{} "
-} &> mafft_log
+} &> $LOGGING/mafft_log
 cd $startDir
 
 core_less_one=$(( $cores - 1 ))
@@ -41,7 +42,7 @@ sleep 1
 
 { 
 ls filtering/fastas/AlignedRecombs | parallel -j $core_less_one python3 filtering/checkmutant.py {.} -r
-} &> check_mutant_log
+} &> $LOGGING/check_mutant_log
 
 pushd filtering/data
 awk ' BEGIN {OFS="\t"} {filter=""; 

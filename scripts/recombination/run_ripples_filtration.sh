@@ -8,7 +8,7 @@ reference="$3"
 results="$4"
 out="$5"
 bucket_id="$6"
-LOGGING="$PWD/logging"
+LOGGING="$7"
 mkdir -p $LOGGING
 
 if [ "$bucket_id" == "None" ]
@@ -50,7 +50,7 @@ python3 filtering/makeSampleInfo.py
 # Get raw sequences for all descendant nodes,
 # align them to reference and perform QC steps 
 # to generate final_report.txt (see report_meaning.txt)
-./filtering/generate_report.sh $bucket_id $date $reference
+./filtering/generate_report.sh $bucket_id $date $reference $LOGGING
 echo "Successfully generated final_report.txt"
 
 # Run 3seq program on mnk_no_duplicates.txt values
@@ -84,4 +84,5 @@ if [ "$bucket_id" != "None" ]
 then
     echo "Copying final filtered recombination results to GCP bucket"
 		gsutil cp filtering/data/filtered_recombinants.txt $results/$out
+		gsutil cp -r $LOGGING/* $results/$out
 fi
