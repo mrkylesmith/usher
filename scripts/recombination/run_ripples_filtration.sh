@@ -84,5 +84,5 @@ if [ "$bucket_id" != "None" ]
 then
     echo "Copying final filtered recombination results to GCP bucket"
 		gsutil cp filtering/data/filtered_recombinants.txt $results/$out
-		gsutil cp -r $LOGGING/* $results/$out
+		gsutil cp -r $LOGGING $results/$out
 fi

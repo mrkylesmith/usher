@@ -161,7 +161,7 @@ def main():
 
       # Create remote logging folder
       utils.create_bucket_folder(project_id, bucket_id, logging, key_file)
-      print("Created empty GCP storage bucket folder for logging: {}".format(logging)
+      print("Created empty GCP storage bucket folder for logging: {}".format(logging))
 
       # Create remote results folder
       utils.create_bucket_folder(project_id, bucket_id, config["results"], key_file)
