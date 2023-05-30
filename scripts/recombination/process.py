@@ -68,7 +68,7 @@ with open("ripples_stdout", "w") as  ripples_stdout:
 stop_ripples = timeit.default_timer()
 # Start runtime for filtration pipeline
 start_filtration = timeit.default_timer()
-filtration = ["./run_ripples_filtration.sh", mat, str(date), reference, results, out, bucket_id]
+filtration = ["./run_ripples_filtration.sh", mat, str(date), reference, results, out, bucket_id, logging]
 # Run putative recombinants through post-processing filtration pipeline
 subprocess.run(filtration)
 
@@ -82,6 +82,4 @@ runtime_log.write("Time for ripples job:{}{}  (Hours:Minutes:Seconds){}".format(
 runtime_log.write("Time for filtration pipeline:{}{}  (Hours:Minutes:Seconds){}".format('\t', str(timedelta(seconds=stop_filtration - start_filtration)), '\n'))
 runtime_log.write("Total runtime for nodes {}:{}{}  (Hours:Minutes:Seconds){}".format(out, '\t', str(timedelta(seconds=stop - start)), '\n'))
 runtime_log.close()
-
 subprocess.run(["gsutil", "cp", "runtime_{}.log".format(out), "gs://{}/{}".format(bucket_id, logging)])
-subprocess.run(["gsutil", "cp", "check_mutant_log", "gs://{}/{}".format(bucket_id, logging)])

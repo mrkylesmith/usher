@@ -1,16 +1,16 @@
 # To run pipeline on GCP, fill in GCP fields below
 # Otherwise leave blank to run pipeline locally
-# GCP credentials
+# GCP Credentials
 bucket_id: 
 project_id: 
 key_file: /tmp/keys/
-# GCP machine and Storage Bucket config
+
+# GCP machine and Storage Bucket Config
 instances: 
 boot_disk_size: 50
 machine_type:
-logging:
 
-# Ripples parameters config [REQUIRED]
+# Ripples Parameters Config [REQUIRED]
 version: 
 mat: 
 newick:
@@ -24,4 +24,5 @@ reference:
 num_descendants: 5
 public_tree: True
 verbose: False
-docker_image:
+docker_image: mrkylesmith/ripples_pipeline:latest
+generate_taxonium: False

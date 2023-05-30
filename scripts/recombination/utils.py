@@ -139,10 +139,13 @@ def run_ripples_locally(version, mat, num_descendants):
     command = [version, "-i", mat, "-n", str(num_descendants), "-d", "filtering/data"]
     return command
 
-def build_taxonium_tree(mat, metadata, date, taxonium_config, RESULTS):
+def build_taxonium_tree(mat, metadata, date, RESULTS):
     """
     Build Taxonium tree jsonl file 
     """
+    taxonium_config = "taxonium_config.json"
+    taxonium_file = str(date) + ".taxonium.jsonl.gz"
+
     # Check `usher_to_taxonium` executable reachable in path
     if(shutil.which('usher_to_taxonium') == None):
          print(colored("[ERROR]: (rivet) environment not activated.  Activate (rivet) Conda env", 'red'))
@@ -156,8 +159,7 @@ def build_taxonium_tree(mat, metadata, date, taxonium_config, RESULTS):
     if os.path.exists(taxonium_config) is None:
         print(colored("{} file not found in current directory", "red"))
         exit(1)
-    taxonium_file = str(date) + ".taxonium.jsonl.gz"
-    print(colored("Building Taxonium tree file", 'green'))
+    print(colored("Writing Taxonium tree file to: {}".format(taxonium_file), 'green'))
     build_taxonium_tree = [
                 "usher_to_taxonium", "--input", mat, "--output", taxonium_file, 
                 "--metadata", metadata, "--clade_type", 'nextstrain,pango',

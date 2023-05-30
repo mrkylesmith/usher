@@ -53,6 +53,12 @@ def main():
        print(colored("[ERROR]: rivet environment not activated.  Activate (rivet) Conda env in 'install/rivet_env.yml'", 'red'))
        exit(1)
 
+  if config["generate_taxonium"] is True:
+      taxonium_file = "taxonium_config.json"
+      if not os.path.isfile("{}/{}".format(PATH, taxonium_file)):
+          print(colored("[ERROR] Taxonium config file '{}' not found in current directory".format(taxonium_file), 'red'))
+          exit(1)
+
   if config["public_tree"] is not True:
       print(colored("[WARNING] Pipeline use recommended for running public UShER trees only. Errors will occur without authorized access to sequencing data.", "yellow"))
       msg = "Do you wish to continue pipeline with non-public UShER tree? (yes/no):  "
@@ -342,8 +348,8 @@ def main():
   subprocess.run(["matUtils","extract","-i",mat,"-s",node_to_extract_file,"-v","{}/results/trios.vcf".format(RESULTS)])
 
   # If running public tree, build Taxonium tree jsonl file 
-  if PUBLIC_TREE:
-      utils.build_taxonium_tree(mat, metadata, date, "taxonium_config.json", RESULTS)
+  if PUBLIC_TREE and config["generate_taxonium"] is True:
+      utils.build_taxonium_tree(mat, metadata, date, RESULTS)
 
   # Copy over final results file to GCP storage bucket
   if not LOCAL_PIPELINE:
