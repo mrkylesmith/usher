@@ -75,9 +75,9 @@ def main():
 
       if config["results"] is not None:
           print("Creating output {} folder to save all backend pipeline outputs".format(config["results"]))
-          # Create results directory 
+          # Create results directory on local machine
           os.makedirs(RESULTS, exist_ok=True)
-          # Create logging directory
+          # Create logging directory on local machine
           os.makedirs(LOGGING, exist_ok=True)
       else:
           print(colored("[ERROR] Fill in 'results' and 'logging' fields in YAML file where output files will be written", 'red'))
@@ -155,19 +155,17 @@ def main():
       # Number of remote machines to parallelize ripples across 
       instances = config["instances"]
       machine_type = config["machine_type"]
-      #logging = config["logging"]
-      logging = "logging"
       
       # Remote location in GCP Storge Bucket to copy filtered recombinants
       results = "gs://{}/{}".format(bucket_id, config["results"])
 
       # Check logging file created on GCP bucket
-      if not logging.endswith("/"):
-          logging += "/"
+      #if not logging.endswith("/"):
+      #    logging += "/"
 
       # Create remote logging folder
-      utils.create_bucket_folder(project_id, bucket_id, logging, key_file)
-      print("Created empty GCP storage bucket folder for logging: {}".format(logging))
+      utils.create_bucket_folder(project_id, bucket_id, "logging", key_file)
+      print("Created empty GCP storage bucket folder for logging: logging/")
 
       # Create remote results folder
       utils.create_bucket_folder(project_id, bucket_id, config["results"], key_file)
@@ -216,7 +214,8 @@ def main():
       p1.terminate()
       exit(1)
   print(colored("Found {} long branches in {}.".format(long_branches, mat), "green"))
- 
+
+  # Running pipeline on GCP
   if not LOCAL_PIPELINE:
       # Num of long branches to search per instance
       branches_per_instance = long_branches//instances        
@@ -230,11 +229,11 @@ def main():
           start_range = str(partition[0])
           end_range = str(partition[1])
           out = "{}_{}".format(start_range, end_range)
-          log = logging + out + ".log"
+          log = "logging/" + out + ".log"
 
           # The following command gets executed on remote machine: 
           # python3 process.py <version> <mat> <start> <end> <out> <bucket_id> <results> <reference> <date> <logging> <num_descendants>
-          command = utils.parse_command(version, mat, start_range, end_range, out, logging, bucket_id, results, reference, date, num_descendants)
+          command = utils.parse_command(version, mat, start_range, end_range, out, "logging", bucket_id, results, reference, date, num_descendants)
 
           info = utils.gcloud_run(command, log, bucket_id, machine_type, docker_image, boot_disk_size)
           processes.append({'partition': partition, 'operation_id': info['operation_id']})
@@ -262,7 +261,7 @@ def main():
       runtime_log.write("Timing for recombination detection tree date:{}{}{}".format('\t', date, '\n'))
       runtime_log.write("Total runtime searching {} tree with {} long branches:{}{}  (Hours:Minutes:Seconds){}".format(date, long_branches, '\t', str(timedelta(seconds=stop_time - start_time)), '\n'))
       runtime_log.close()
-      subprocess.run(["gsutil", "cp", "aggregate_runtime.log", "gs://{}/{}".format(bucket_id, logging)])
+      subprocess.run(["gsutil", "cp", "aggregate_runtime.log", "gs://{}/logging".format(bucket_id)])
       # Aggregate results from each GCP instance locally
       utils.aggregate_results(bucket_id, config["results"], date)
   
@@ -275,7 +274,7 @@ def main():
       start_range = 0 
       end_range = long_branches
       out = "{}_{}".format(start_range, end_range)
-      log = LOGGING + out + ".log"
+      log = LOGGING + "/" + out + ".log"
 
       # start runtime for RIPPLES
       start_ripples = timeit.default_timer()
