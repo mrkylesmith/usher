@@ -9,8 +9,10 @@ LOGGING="$4"
 startDir=$PWD
 cores=`grep -c ^processor /proc/cpuinfo`
 
+if [
+
 # Check correct number of args passed
-if [ "$#" -ne 3 ]; then
+if [ "$#" -ne 4 ]; then
     echo "ERROR: Incorrect number of arguments passed."
 fi
 
@@ -28,7 +30,7 @@ python3 filtering/analyzerecomb.py -a
 cd filtering/fastas/OrderedRecombs
 {
     ls . |  parallel -j $cores "mafft --auto {} > ../AlignedRecombs/{} "
-} &> $LOGGING/mafft_log
+} &> $startDir/$LOGGING/mafft_log
 cd $startDir
 
 core_less_one=$(( $cores - 1 ))
@@ -42,7 +44,7 @@ sleep 1
 
 { 
 ls filtering/fastas/AlignedRecombs | parallel -j $core_less_one python3 filtering/checkmutant.py {.} -r
-} &> $LOGGING/check_mutant_log
+} &> $startDir/$LOGGING/check_mutant_log
 
 pushd filtering/data
 awk ' BEGIN {OFS="\t"} {filter=""; 

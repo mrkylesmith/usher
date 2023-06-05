@@ -8,13 +8,14 @@ reference="$3"
 results="$4"
 out="$5"
 bucket_id="$6"
-LOGGING="$7"
-mkdir -p $LOGGING
+logging="$7"
+STARTDIR=$PWD
 
 if [ "$bucket_id" == "None" ]
 then
     echo "Running QC and filtration checks on-premise";
     mkdir -p $results/$out
+		LOGGING="${logging}"
 else
 		echo "BUCKET_ID given, running on GCP instance";
     # Create output results directories
@@ -24,6 +25,8 @@ else
     cp filtering/data/descendants.tsv results/$out
     # Copy ripples unfiltered recombinants to GCP bucket
     gsutil cp -r results/$out $results/
+		LOGGING=$STARTDIR/$logging
+    mkdir -p $LOGGING
 fi
 
 # Outputs from ripples (recombination.tsv and descendants.tsv) placed in "filtering/data"
@@ -45,7 +48,7 @@ python3 filtering/makeMNK.py
 python3 filtering/getDescendants.py
 
 python3 filtering/makeSampleInfo.py
-} &> "$LOGGING/pre_report_log"
+} &> "$LOGGING/pre_report_error_log"
 
 # Get raw sequences for all descendant nodes,
 # align them to reference and perform QC steps 
