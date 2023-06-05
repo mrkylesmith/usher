@@ -9,8 +9,6 @@ LOGGING="$4"
 startDir=$PWD
 cores=`grep -c ^processor /proc/cpuinfo`
 
-if [
-
 # Check correct number of args passed
 if [ "$#" -ne 4 ]; then
     echo "ERROR: Incorrect number of arguments passed."
