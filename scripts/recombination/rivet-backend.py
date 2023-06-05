@@ -353,8 +353,8 @@ def main():
   # Copy over final results file to GCP storage bucket
   if not LOCAL_PIPELINE:
       subprocess.run(["gsutil", "cp", recomb_output_file, results])
-      subprocess.run(["gsutil", "cp", "{}/trios.vcf".format(RESULTS), results])
-      subprocess.run(["gsutil", "cp", "{}/samples_descendants.txt.xz".format(RESULTS), results])
+      subprocess.run(["gsutil", "cp", "{}/results/trios.vcf".format(RESULTS), results])
+      subprocess.run(["gsutil", "cp", "{}/results/samples_descendants.txt.xz".format(RESULTS), results])
 
   print(colored("[Success] RIVET Pipeline complete. Final recombination event results written to {}".format(recomb_output_file), "green"))
 
