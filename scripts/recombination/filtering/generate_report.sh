@@ -28,7 +28,7 @@ python3 filtering/analyzerecomb.py -a
 cd filtering/fastas/OrderedRecombs
 {
     ls . |  parallel -j $cores "mafft --auto {} > ../AlignedRecombs/{} "
-} &> $startDir/$LOGGING/mafft_log
+} &> "$LOGGING/mafft_log"
 cd $startDir
 
 core_less_one=$(( $cores - 1 ))
@@ -42,7 +42,7 @@ sleep 1
 
 { 
 ls filtering/fastas/AlignedRecombs | parallel -j $core_less_one python3 filtering/checkmutant.py {.} -r
-} &> $startDir/$LOGGING/check_mutant_log
+} &> "$LOGGING/check_mutant_log"
 
 pushd filtering/data
 awk ' BEGIN {OFS="\t"} {filter=""; 
