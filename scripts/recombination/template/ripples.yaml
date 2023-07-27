@@ -1,28 +1,29 @@
-# To run pipeline on GCP, fill in GCP fields below
-# Otherwise leave blank to run pipeline locally
-# GCP Credentials
+# GCP Credentials [LEAVE EMPTY FOR LOCAL JOB]
 bucket_id: 
 project_id: 
 key_file: /tmp/keys/
 
-# GCP machine and Storage Bucket Config
+# GCP Machine and Storage Bucket Config [LEAVE EMPTY FOR LOCAL JOB]
 instances: 
 boot_disk_size: 50
 machine_type:
 
 # Ripples Parameters Config [REQUIRED]
-version: 
+version: ripples-fast
 mat: 
-newick:
+newick: 
 metadata:
 date: 
 # Local results output directory, or name of folder on GCP storage bucket
 results: 
-reference:
+reference: 
 
-# Additional parameters
+# Additional Parameters
 num_descendants: 5
 public_tree: True
 verbose: False
+# Default to all available threads if left empty
+threads: 
 docker_image: mrkylesmith/ripples_pipeline:latest
 generate_taxonium: False
+generate_translation: True

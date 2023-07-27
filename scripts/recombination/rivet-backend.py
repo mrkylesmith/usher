@@ -59,6 +59,10 @@ def main():
           print(colored("[ERROR] Taxonium config file '{}' not found in current directory".format(taxonium_file), 'red'))
           exit(1)
 
+  if os.path.isdir(RESULTS):
+      print(colored("[ERROR] Results directory given in config file already exists, change results directory name, or move existing directory.", 'red'))
+      exit(1)
+
   if config["public_tree"] is not True:
       print(colored("[WARNING] Pipeline use recommended for running public UShER trees only. Errors will occur without authorized access to sequencing data.", "yellow"))
       msg = "Do you wish to continue pipeline with non-public UShER tree? (yes/no):  "
