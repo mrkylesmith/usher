@@ -139,11 +139,16 @@ def run_ripples_locally(version, mat, num_descendants):
     command = [version, "-i", mat, "-n", str(num_descendants), "-d", "filtering/data"]
     return command
 
-def build_taxonium_tree(mat, metadata, date, RESULTS):
+def generate_translation(translation_outfile, mat, reference, NCBI_GENES):
+    """
+    """
+    print(colored("Generating amino acid translations.", 'green'))
+    subprocess.run(["matUtils", "summary", "--translate", translation_outfile, "-i", mat, "-g", NCBI_GENES, "-f", reference])
+
+def build_taxonium_tree(mat, metadata, date, RESULTS, taxonium_config):
     """
     Build Taxonium tree jsonl file 
     """
-    taxonium_config = "taxonium_config.json"
     taxonium_file = str(date) + ".taxonium.jsonl.gz"
 
     # Check `usher_to_taxonium` executable reachable in path

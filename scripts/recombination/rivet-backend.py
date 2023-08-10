@@ -2,8 +2,6 @@
 #
 # Launch script to run parallel ripples jobs on GCP
 import subprocess
-from multiprocessing import Process
-from google.cloud import storage
 import sys
 import time
 import os
@@ -14,15 +12,20 @@ import json
 import time
 import timeit
 import datetime
-from datetime import timedelta
-from termcolor import colored
 import yaml
 import shutil
 import wget
 import utils
+from argparse import ArgumentParser
+from datetime import timedelta
+from termcolor import colored
+from multiprocessing import Process
+from google.cloud import storage
 
 
 def main():
+  """
+  """
   # Configs and credentials from yaml
   config = utils.get_config()
   bucket_id = config["bucket_id"]
@@ -54,10 +57,15 @@ def main():
        exit(1)
 
   if config["generate_taxonium"] is True:
-      taxonium_file = "taxonium_config.json"
-      if not os.path.isfile("{}/{}".format(PATH, taxonium_file)):
-          print(colored("[ERROR] Taxonium config file '{}' not found in current directory".format(taxonium_file), 'red'))
+      if not os.path.isfile("{}/{}".format(PATH, config["taxonium_config"])):
+          print(colored("[ERROR] Taxonium config file '{}' not found in current directory".format(config["taxonium_config"]), 'red'))
           exit(1)
+
+  if config["generate_translation"] is True:
+      if not os.path.isfile("{}/{}".format(PATH, "ncbiGenes.gtf")) or not os.path.isfile("{}/{}".format(PATH, "NC_045512v2.fa")):
+          print(colored("[ERROR] The following required files not found for amino acid translation workflow.  {}, or {} NOT FOUND.".format("ncbiGenes.gtf", "NC_045512v2.fa"), 'red'))
+          exit(1)
+
 
   if os.path.isdir(RESULTS):
       print(colored("[ERROR] Results directory given in config file already exists, change results directory name, or move existing directory.", 'red'))
@@ -350,9 +358,20 @@ def main():
   # Create VCF file of all trio sequences
   subprocess.run(["matUtils","extract","-i",mat,"-s",node_to_extract_file,"-v","{}/results/trios.vcf".format(RESULTS)])
 
+  # If generate_translation is set to True, generate amino acid translation file necessary for RIVET frontend
+  if config["generate_translation"] is True:
+      # SARS-CoV-2 specific
+      NCBI_GENES = "ncbiGenes.gtf"
+      if PUBLIC_TREE:
+        translation_outfile = "coding_mutations_public_{}.tsv".format(date)
+      else:
+        translation_outfile = "coding_mutations_full{}.tsv".format(date)
+      utils.generate_translation(translation_outfile, mat, "NC_045512v2.fa", NCBI_GENES)
+
   # If running public tree, build Taxonium tree jsonl file 
-  if PUBLIC_TREE and config["generate_taxonium"] is True:
-      utils.build_taxonium_tree(mat, metadata, date, RESULTS)
+  if config["generate_taxonium"] is True:
+      taxonium_config = config["taxonium_config"]
+      utils.build_taxonium_tree(mat, metadata, date, RESULTS, taxonium_config)
 
   # Copy over final results file to GCP storage bucket
   if not LOCAL_PIPELINE:
@@ -363,4 +382,7 @@ def main():
   print(colored("[Success] RIVET Pipeline complete. Final recombination event results written to {}".format(recomb_output_file), "green"))
 
 if __name__ == '__main__':
+    parser = ArgumentParser(prog='RIVET Backend',
+                            description="Fill out all the fields in the 'ripples.yaml' file to setup your RIVET job.")
+    args = parser.parse_args()
     main()

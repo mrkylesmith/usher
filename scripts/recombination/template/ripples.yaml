@@ -25,5 +25,11 @@ verbose: False
 # Default to all available threads if left empty
 threads: 
 docker_image: mrkylesmith/ripples_pipeline:latest
+
+# Taxonium Config
 generate_taxonium: False
+taxonium_config: taxonium_config.json
+
+# Amino Acid Translation
+# NOTE: Currently only supported for SARS-CoV-2
 generate_translation: True
