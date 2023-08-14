@@ -76,6 +76,13 @@ def main():
       msg = "Do you wish to continue pipeline with non-public UShER tree? (yes/no):  "
       utils.non_public_tree_warning(msg)
 
+  # Check if metadata file is unzipped, if not unzip it for post_filtration pipeline
+  utils.uncompress_gz_file(metadata)
+  metadata, extension = os.path.splitext(metadata)
+  if not os.path.isfile(metadata) or metadata.endswith(extension):
+      print(colored("[ERROR]. Uncompress and rename metadata file in config file."))
+      exit(1)
+
   if not bucket_id and not project_id:
       print(colored("Running RIVET backend pipeline locally.", 'green'))
       LOCAL_PIPELINE = True
@@ -335,9 +342,6 @@ def main():
   while(p1.is_alive()):
       print("Chronumental job not finished running yet.")
       time.sleep(20)
-
-  # Check if metadata file is unzipped, if not unzip it for post_filtration pipeline
-  utils.uncompress_gz_file(metadata)
 
   # Assumes Chronumental inferred dates file output to current directory
   filtration_results_file = "{}/results/filtered_recombinants_{}.txt".format(RESULTS, date)
