@@ -38,10 +38,9 @@ def auth(project_id, key_file):
 def uncompress_gz_file(file):
     """
     """
-    if file.endswith(".gz"):
-        with gzip.open(file, 'rb') as in_file:
-            with open(os.path.splitext(file)[0], 'wb') as out_file:
-                shutil.copyfileobj(in_file, out_file)
+    with gzip.open(file, 'rb') as in_file:
+        with open(os.path.splitext(file)[0], 'wb') as out_file:
+            shutil.copyfileobj(in_file, out_file)
 
 def non_public_tree_warning(msg):
     """

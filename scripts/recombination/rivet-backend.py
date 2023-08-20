@@ -77,11 +77,12 @@ def main():
       utils.non_public_tree_warning(msg)
 
   # Check if metadata file is unzipped, if not unzip it for post_filtration pipeline
-  utils.uncompress_gz_file(metadata)
-  metadata, extension = os.path.splitext(metadata)
-  if not os.path.isfile(metadata) or metadata.endswith(extension):
-      print(colored("[ERROR]. Uncompress and rename metadata file in config file."))
-      exit(1)
+  if metadata.endswith(".gz"):
+      utils.uncompress_gz_file(metadata)
+      metadata, extension = os.path.splitext(metadata)
+      if not os.path.isfile(metadata) or metadata.endswith(extension):
+          print(colored("[ERROR]. Uncompress and rename metadata file in config file."))
+          exit(1)
 
   if not bucket_id and not project_id:
       print(colored("Running RIVET backend pipeline locally.", 'green'))
