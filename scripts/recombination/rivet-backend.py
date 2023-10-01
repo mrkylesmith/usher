@@ -45,6 +45,7 @@ def main():
   PATH = str(os.getcwd())
   RESULTS = PATH + "/" + config["results"]
   LOGGING = PATH + "/{}/logging".format(config["results"])
+  THREADS = config["threads"]
 
   # Check that executables found
   if shutil.which("ripplesInit") is None or shutil.which("ripplesUtils") is None:
@@ -206,7 +207,7 @@ def main():
 
   # Generate newick tree input for Chronumental, if doesn't exist already
   print("Generating newick file from MAT using matUtils extract")
-  utils.newick_from_mat(mat, newick)
+  utils.newick_from_mat(mat, newick, THREADS)
   print(colored("Newick tree generated: {}".format(newick), "green"))
 
   # Launch Chronumental job locally
@@ -300,7 +301,7 @@ def main():
       start_ripples = timeit.default_timer()
 
       # Run ripples job locally
-      cmd = utils.run_ripples_locally(version, mat, num_descendants)
+      cmd = utils.run_ripples_locally(version, mat, num_descendants, THREADS)
       #TODO: add verbose option to config file for stdout 
       #with open("{}/ripples_stdout".format(LOGGING), "w") as  ripples_stdout:
       #    with open("{}/ripples_stderr".format(LOGGING), "w") as  ripples_stderr:
@@ -351,7 +352,7 @@ def main():
 
   print(colored("Ranking recombinant results and aggregating additional information.", "green"))
   # Rank recombinants and generate final recombinant node information output file
-  cmd = utils.post_process(mat, filtration_results_file, chron_dates_file, str(date), recomb_output_file, metadata, "{}/results".format(RESULTS))
+  cmd = utils.post_process(mat, filtration_results_file, chron_dates_file, str(date), recomb_output_file, metadata, "{}/results".format(RESULTS), THREADS)
   try:
       subprocess.run(cmd)
   except:
@@ -361,7 +362,7 @@ def main():
   #cmd="sort -u <(cut -f 1 {0} |tail -n +2 ) <(cut -f 2 {0} |tail -n +2 ) <(cut -f 3 {0} |tail -n +2 ) > {1}".format(recomb_output_file,node_to_extract_file)
   #subprocess.run(["bash","-c",cmd])
   # Create VCF file of all trio sequences
-  subprocess.run(["matUtils","extract","-i",mat,"-s",node_to_extract_file,"-v","{}/results/trios.vcf".format(RESULTS)])
+  subprocess.run(["matUtils","extract","-i",mat, "-T", THREADS, "-s",node_to_extract_file,"-v","{}/results/trios.vcf".format(RESULTS)])
 
   # If generate_translation is set to True, generate amino acid translation file necessary for RIVET frontend
   if config["generate_translation"] is True:
@@ -371,7 +372,7 @@ def main():
         translation_outfile = "coding_mutations_public_{}.tsv".format(date)
       else:
         translation_outfile = "coding_mutations_full{}.tsv".format(date)
-      utils.generate_translation(translation_outfile, mat, "NC_045512v2.fa", NCBI_GENES)
+      utils.generate_translation(translation_outfile, mat, "NC_045512v2.fa", NCBI_GENES, THREADS)
 
   # If running public tree, build Taxonium tree jsonl file 
   if config["generate_taxonium"] is True:

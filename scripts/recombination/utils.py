@@ -129,20 +129,20 @@ def aggregate_results(bucket_id, results_dir, date):
     descendants.close()
     unfiltered_recombinants.close()
 
-def run_ripples_locally(version, mat, num_descendants):
+def run_ripples_locally(version, mat, num_descendants, threads):
     """
     """
     # Expecting ripples output (recombination.txt and descendents.txt)
     # in recombination/filtering to start this pipeline
     #command = [version, "-i", mat, "-n", "2", "-S", start, "-E", end, "-d", "filtering/data"]
-    command = [version, "-i", mat, "-n", str(num_descendants), "-d", "filtering/data"]
+    command = [version, "-i", mat, "-n", str(num_descendants), "-T", threads, "-d", "filtering/data"]
     return command
 
-def generate_translation(translation_outfile, mat, reference, NCBI_GENES):
+def generate_translation(translation_outfile, mat, reference, NCBI_GENES, threads):
     """
     """
     print(colored("Generating amino acid translations.", 'green'))
-    subprocess.run(["matUtils", "summary", "--translate", translation_outfile, "-i", mat, "-g", NCBI_GENES, "-f", reference])
+    subprocess.run(["matUtils", "summary", "--translate", translation_outfile, "-i", mat, "-g", NCBI_GENES, "-f", reference, "-T", threads])
 
 def build_taxonium_tree(mat, metadata, date, RESULTS, taxonium_config):
     """
@@ -222,16 +222,16 @@ def run_chronumental(newick, metadata):
     p = subprocess.Popen(command, stdout=log_file)
     return p
 
-def newick_from_mat(mat, out_newick):
+def newick_from_mat(mat, out_newick, threads):
     """
     """
-    command = ["matUtils", "extract", "-i", mat, "-t", out_newick]
+    command = ["matUtils", "extract", "-i", mat, "-t", out_newick, "-T", threads]
     p = subprocess.run(command)
     return p
 
 # Generate run command for final recombination list and ranking
-def post_process(mat, filtration_results_file, chron_dates_file, date, recomb_output_file, metadata, output_dir):
-    cmd = ["post_filtration", "-i", mat, "-f", filtration_results_file, "-c", chron_dates_file, "-d", date, "-r", recomb_output_file, "-w", "-m", metadata, "-o", output_dir]
+def post_process(mat, filtration_results_file, chron_dates_file, date, recomb_output_file, metadata, output_dir, threads):
+    cmd = ["post_filtration", "-i", mat, "-f", filtration_results_file, "-c", chron_dates_file, "-d", date, "-r", recomb_output_file, "-w", "-m", metadata, "-o", output_dir, "-T", threads]
     return cmd
 
 def gcloud_run(command, log, bucket_id, machine_type, docker_image, boot_disk_size):

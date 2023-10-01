@@ -123,8 +123,8 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
     // Lookup recomb node and check it exists in tree
     auto recomb = T.get_node(r.recomb_node_id);
     if (recomb == NULL) {
-        std::cout << "Recomb node is NULL, not finding recomb node id"
-                  << "\n";
+        std::cout << "3. Recomb node is NULL, not finding recomb node id: "
+                  << r.recomb_node_id << "\n";
         exit(1);
     }
 
@@ -368,8 +368,8 @@ void get_recombination_info(
         // Get the recombinant node, and make sure id exists in tree
         auto recomb = T.get_node(r.recomb_node_id);
         if (recomb == NULL) {
-            std::cout << "Recomb node is NULL, not finding recomb node id"
-                      << "\n";
+            std::cout << "1. Recomb node is NULL, not finding recomb node id: "
+                      << r.recomb_node_id << "\n";
             exit(1);
         }
         // Get number of descendants for recombinant node
@@ -501,8 +501,8 @@ void get_recombination_info_using_descendants(
         Recombinant r = parse_recomb(results);
         auto recomb = T.get_node(r.recomb_node_id);
         if (recomb == NULL) {
-            std::cout << "Recomb node is NULL, not finding recomb node id"
-                      << "\n";
+            std::cout << "2. Recomb node is NULL, not finding recomb node id: "
+                      << r.recomb_node_id << "\n";
             exit(1);
         }
         // Get number of descendants for recombinant node

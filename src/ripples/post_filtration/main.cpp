@@ -8,6 +8,12 @@
 namespace po = boost::program_options;
 
 int main(int argc, char **argv) {
+    uint32_t num_cores = tbb::task_scheduler_init::default_num_threads();
+		uint32_t num_threads;
+    std::string num_threads_message = "Number of threads to use when possible "
+                                      "[DEFAULT uses all available cores, " +
+                                      std::to_string(num_cores) +
+                                      " detected on this machine]";
 
     po::options_description desc("optimize options");
     desc.add_options()("input-mat,i", po::value<std::string>()->required(),
@@ -31,7 +37,10 @@ int main(int argc, char **argv) {
         "Output file containing filtered recombinants with all "
         "information needed for RIVET[REQUIRED].")(
         "output-directiory,o", po::value<std::string>()->required(),
-        "Output directory to write all output files to[REQUIRED]. ");
+        "Output directory to write all output files to[REQUIRED]. ")(
+        "threads,T",
+        po::value<uint32_t>(&num_threads)->default_value(num_cores),
+        num_threads_message.c_str());
 
     po::options_description all_options;
     all_options.add(desc);
@@ -61,6 +70,10 @@ int main(int argc, char **argv) {
     std::string metadata_file = vm["metadata"].as<std::string>();
     std::string output_dir = vm["output-directiory"].as<std::string>();
     bool weight_by_samples = vm["weight"].as<bool>();
+
+    // Number of worker threads to use
+		tbb::task_scheduler_init init(num_threads);
+
 
     if (weight_by_samples) {
         std::cout << "Using default ranking method."
