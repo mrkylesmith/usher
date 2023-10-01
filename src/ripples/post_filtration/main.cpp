@@ -9,7 +9,7 @@ namespace po = boost::program_options;
 
 int main(int argc, char **argv) {
     uint32_t num_cores = tbb::task_scheduler_init::default_num_threads();
-		uint32_t num_threads;
+    uint32_t num_threads;
     std::string num_threads_message = "Number of threads to use when possible "
                                       "[DEFAULT uses all available cores, " +
                                       std::to_string(num_cores) +
@@ -72,8 +72,7 @@ int main(int argc, char **argv) {
     bool weight_by_samples = vm["weight"].as<bool>();
 
     // Number of worker threads to use
-		tbb::task_scheduler_init init(num_threads);
-
+    tbb::task_scheduler_init init(num_threads);
 
     if (weight_by_samples) {
         std::cout << "Using default ranking method."

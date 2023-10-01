@@ -45,7 +45,7 @@ def main():
   PATH = str(os.getcwd())
   RESULTS = PATH + "/" + config["results"]
   LOGGING = PATH + "/{}/logging".format(config["results"])
-  THREADS = config["threads"]
+  THREADS = str(config["threads"])
 
   # Check that executables found
   if shutil.which("ripplesInit") is None or shutil.which("ripplesUtils") is None:
@@ -218,9 +218,9 @@ def main():
   print("Finding the number of long branches.")
   # Using default num_descendants
   if num_descendants == None:
-      init = "ripplesInit -i {}".format(mat)
+      init = "ripplesInit -i {} -T {}".format(mat, THREADS)
   elif isinstance(num_descendants, int):
-      init = "ripplesInit -i {} -n {}".format(mat, num_descendants)
+      init = "ripplesInit -i {} -n {} -T {}".format(mat, num_descendants, THREADS)
   else:
       print("[ERROR] Check ripples.yaml file configuration for num_descendants. Provide int number of descendents to consider or leave field blank to use default value 2.")
       exit(1)
