@@ -111,7 +111,7 @@ inline float alternate_recombinant_rank(int days, int num_descendants,
 }
 
 int elapsed_days(std::string tree_date,
-                 std::string inferred_recomb_date) noexcept;
+                 std::string inferred_recomb_date);
 
 std::vector<std::string> format_date(std::string date);
 

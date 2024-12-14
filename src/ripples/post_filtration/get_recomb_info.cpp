@@ -2,11 +2,13 @@
 #include "src/mutation_annotated_tree.hpp"
 #include "src/ripples/util/text_parser.hpp"
 #include <algorithm>
+#include <array>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filter/lzma.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
+#include <boost/tokenizer.hpp>
 #include <ctime>
 #include <fstream>
 #include <iostream>
@@ -18,6 +20,61 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+std::vector<std::string> get_node_mutations(MAT::Tree &T,
+                                            const std::string &node_id) {
+    MAT::Node *node = T.get_node(node_id);
+    if (!node) {
+        printf("[Error] Node id is null: %s\n", node_id.c_str());
+        exit(1);
+    }
+
+    // Stack for last-in first-out ordering
+    std::stack<std::string> mutation_stack;
+    std::unordered_set<int> positions_seen;
+    std::vector<MAT::Mutation> curr_node_mutations = node->mutations;
+
+    if (curr_node_mutations.size() > 0) {
+        // Number of mutations on the current code
+        size_t num_mutations = curr_node_mutations.size();
+
+        for (size_t k = 0; k < num_mutations; k++) {
+            mutation_stack.push(curr_node_mutations[k].get_string());
+            int pos = std::stoi(curr_node_mutations[k].get_string().substr(
+                1, curr_node_mutations[k].get_string().size() - 2));
+            positions_seen.insert(pos);
+        }
+    }
+
+    // Mutations on the ancestors of node
+    for (auto anc_node : T.rsearch(node_id)) {
+        curr_node_mutations = anc_node->mutations;
+
+        if (curr_node_mutations.size() > 0) {
+            size_t num_mutations = curr_node_mutations.size();
+            for (size_t k = 0; k < num_mutations; k++) {
+                // Get the position of this mutation
+                int pos = std::stoi(curr_node_mutations[k].get_string().substr(
+                    1, curr_node_mutations[k].get_string().size() - 2));
+                // If a mutation at this position has not already been seen, add
+                // to stack
+                if (positions_seen.find(pos) == positions_seen.end()) {
+                    mutation_stack.push(curr_node_mutations[k].get_string());
+                    positions_seen.insert(pos);
+                }
+            }
+        }
+    }
+    // Pop all the mutations from the stack and copy into a vector
+    std::vector<std::string> mut_v{};
+    mut_v.reserve(mutation_stack.size());
+
+    while (mutation_stack.size()) {
+        mut_v.push_back(mutation_stack.top());
+        mutation_stack.pop();
+    }
+    return mut_v;
+}
 
 // Expected format for string date: "2022-08-14"
 // Returns int vector of size 3 [year, month, day]
@@ -42,9 +99,101 @@ std::vector<std::string> format_date(std::string date) {
     return year_month_day;
 }
 
+std::set<int> parse_informative_sites(std::string sites) {
+    using char_tokenizer = boost::tokenizer<boost::char_separator<char>>;
+    char_tokenizer tokenizer(sites, boost::char_separator<char>(","));
+
+    std::set<int> positions;
+    for (auto it = tokenizer.begin(); it != tokenizer.end(); ++it) {
+        positions.insert(std::stoi(*it));
+    }
+    return positions;
+}
+
+template <typename T>
+bool check_rmnm_site_helper(const T &vec, const T &rmnm_vec) {
+    for (const auto &mut : rmnm_vec) {
+        // If affected MNS not in vec of node mutations
+        if (std::find(vec.begin(), vec.end(), mut) == vec.end()) {
+            // Specific known RMNM not present at node
+            return false;
+        }
+    }
+    return true;
+}
+
+bool check_rmns_positions(std::set<int> &informative_sites,
+                          std::vector<std::string> &mut_vec) {
+    if (informative_sites.empty()) {
+        return false;
+    }
+    using positions = const std::set<int>;
+    std::array<positions, 15> known_rmnms = {
+        positions{21302, 21304, 21305},
+        positions{21304, 21305},
+        positions{28877, 28878},
+        positions{27382, 27383, 27384},
+        positions{26491, 26492, 26497},
+        positions{27758, 27760},
+        positions{27875, 27881, 27882, 27883},
+        positions{27881, 27882, 27883},
+        positions{25162, 25163},
+        positions{21294, 21295, 21296},
+        positions{27038, 27039, 27040},
+        positions{21550, 21551},
+        positions{13423, 13424},
+        positions{4576, 4579},
+        positions{20284, 20285}};
+
+    int rmnms_index = 0;
+    // Check any of the known RMNMs found in set of node mutations
+    for (const auto &sites : known_rmnms) {
+        if (check_rmnm_site_helper(informative_sites, sites)) {
+            return true;
+        }
+        ++rmnms_index;
+    }
+    // Node does not contain any known RMNMs
+    return false;
+}
+
+// Check if recombinant contains highly recurrent multi-nucleotide
+// substitutions
+bool check_rmnm_sites(const std::vector<std::string> &mut_vec) {
+    if (mut_vec.empty()) {
+        return false;
+    }
+
+    using mutations = const std::vector<std::string>;
+    std::array<mutations, 15> known_rmnms = {
+        mutations{"C21302T", "C21304A", "G21305A"},
+        mutations{"C21304A", "G21305A"},
+        mutations{"A28877T", "G28878C"},
+        mutations{"G27382C", "A27383T", "T27384C"},
+        mutations{"T26491C", "A26492T", "T26497C"},
+        mutations{"G27758A", "T27760A"},
+        mutations{"T27875C", "C27881T", "G27882", "C27883T"},
+        mutations{"C27881T", "G27882C", "C27883T"},
+        mutations{"C25162A", "C25163A"},
+        mutations{"T21294A", "G21295A", "G21296A"},
+        mutations{"A27038T", "T27039A", "C27040A"},
+        mutations{"A21550C", "A21551T"},
+        mutations{"C13423A", "C13424A"},
+        mutations{"A4576T", "T4579A"},
+        mutations{"A20284T", "T20285C"}};
+
+    // Check any of the known RMNMs found in set of node mutations
+    for (const auto &muts : known_rmnms) {
+        if (check_rmnm_site_helper(mut_vec, muts)) {
+            return true;
+        }
+    }
+    // Node does not contain any known RMNMs
+    return false;
+}
+
 //   Calculate elapsed days from given date to present date.
-int elapsed_days(std::string tree_date,
-                 std::string inferred_recomb_date) noexcept {
+int elapsed_days(std::string tree_date, std::string inferred_recomb_date) {
 
     // Parse format of MAT tree date
     auto year_month_day = format_date(tree_date);
@@ -107,18 +256,6 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
                                 Recomb_Samples &rs,
                                 std::unordered_set<std::string> &internal_nodes,
                                 MAT::Tree &T, float recomb_rank) {
-    outfile << r.recomb_node_id << "\t";
-
-    // Write donor node id
-    outfile << r.donor_node_id << "\t";
-
-    // Write acceptor node id
-    outfile << r.acceptor_node_id << "\t";
-
-    //  Write recombinant node breakpoint intervals
-    outfile << std::get<0>(r.breakpoint_intervals) << "\t";
-    outfile << std::get<1>(r.breakpoint_intervals) << "\t";
-
     // Write recomb node clade and lineage
     // Lookup recomb node and check it exists in tree
     auto recomb = T.get_node(r.recomb_node_id);
@@ -127,6 +264,41 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
                   << r.recomb_node_id << "\n";
         exit(1);
     }
+    // Lookup donor node and check it exists in tree
+    auto donor = T.get_node(r.donor_node_id);
+    if (donor == NULL) {
+        std::cout << "Donor node is NULL, not finding donor node id"
+                  << "\n";
+        exit(1);
+    }
+    // Lookup acceptor node and check it exists in tree
+    auto acceptor = T.get_node(r.acceptor_node_id);
+    if (acceptor == NULL) {
+        std::cout << "Acceptor node is NULL, not finding acceptor node id"
+                  << "\n";
+        exit(1);
+    }
+
+    outfile << r.recomb_node_id << "\t";
+
+    // Write donor node id
+    outfile << r.donor_node_id << "\t";
+
+    // Write acceptor node id
+    outfile << r.acceptor_node_id << "\t";
+
+    // Write number of recombinant descendants
+    outfile << T.get_num_leaves(recomb) << "\t";
+
+    // Write number of donor descendants
+    outfile << T.get_num_leaves(donor) << "\t";
+
+    // Write number of acceptor descendants
+    outfile << T.get_num_leaves(acceptor) << "\t";
+
+    //  Write recombinant node breakpoint intervals
+    outfile << std::get<0>(r.breakpoint_intervals) << "\t";
+    outfile << std::get<1>(r.breakpoint_intervals) << "\t";
 
     internal_nodes.insert(r.recomb_node_id);
     internal_nodes.insert(r.donor_node_id);
@@ -137,13 +309,6 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
     outfile << recomb_clade << "\t";
     outfile << recomb_lineage << "\t";
 
-    // Lookup donor node and check it exists in tree
-    auto donor = T.get_node(r.donor_node_id);
-    if (donor == NULL) {
-        std::cout << "Donor node is NULL, not finding donor node id"
-                  << "\n";
-        exit(1);
-    }
     // Get donor clade (nextstrain) and lineage (pangolin designation)
     // get_clade_assignment(node, 0) returns nextstrain
     // get_clade_assignment(node, 1) returns pangolin
@@ -151,14 +316,6 @@ static void write_single_recomb(std::ofstream &outfile, const Recombinant &r,
     auto donor_lineage = T.get_clade_assignment(donor, 1);
     outfile << donor_clade << "\t";
     outfile << donor_lineage << "\t";
-
-    // Lookup acceptor node and check it exists in tree
-    auto acceptor = T.get_node(r.acceptor_node_id);
-    if (acceptor == NULL) {
-        std::cout << "Acceptor node is NULL, not finding acceptor node id"
-                  << "\n";
-        exit(1);
-    }
 
     // Get acceptor clade (nextstrain) and lineage (pangolin
     // designation)
@@ -232,24 +389,6 @@ void write_recombination_list(
         throw std::runtime_error(
             "ERROR: Cannot create sample nodes output file.");
     }
-    boost::iostreams::filtering_streambuf<boost::iostreams::output> outbuf;
-    outbuf.push(boost::iostreams::lzma_compressor(
-        boost::iostreams::lzma::best_compression));
-    outbuf.push(desc_outfile);
-    std::ostream descendants_outfile(&outbuf);
-
-    // Create samples output file with the name and all descendants
-    if (!descendants_outfile) {
-        throw std::runtime_error(
-            "ERROR: Cannot create recombinant nodes descendants output file.");
-    }
-    // Add header
-    descendants_outfile << "recombinant node id"
-                        << "\t"
-                        << "descendants"
-                        << "\t"
-                        << "count"
-                        << "\n";
 
     std::unordered_set<std::string> internal_nodes;
     internal_nodes.reserve(ranked_recombs.size() * 3);
@@ -260,20 +399,12 @@ void write_recombination_list(
         Recomb_Samples rs = recomb_samples.at(r.recomb_node_id);
         write_single_recomb(outfile, r, rs, internal_nodes, T, rr.recomb_rank);
     }
+
     for (const auto &node_id : internal_nodes) {
-        std::vector<std::string> desc_vec = get_node_descendants(T, node_id);
-        auto descendants_csl = boost::algorithm::join(desc_vec, ", ");
-        // 1st Column: node_id
-        descendants_outfile << node_id << "\t";
-        // 2nd column: comma separated list of descendants for node_id
-        descendants_outfile << descendants_csl << "\t";
-        // 3rd column: descendant count for node_id
-        descendants_outfile << desc_vec.size() << "\n";
         samples_outfile << node_id << "\n";
     }
     outfile.close();
     samples_outfile.close();
-    boost::iostreams::close(outbuf);
 }
 
 static Recombinant parse_recomb(text_parser &results) {
@@ -354,9 +485,22 @@ void get_recombination_info(
     // Recomb node id: Recomb_Samples
     std::unordered_map<std::string, Recomb_Samples> recomb_samples;
 
+    int num_rmnm = 0;
+
     // Get each detected recombinant node from filtration pipeline output
     for (; !results.done(); results.next_line()) {
         auto r = parse_recomb(results);
+
+        std::set<int> positions =
+            parse_informative_sites(r.informative_position);
+
+        std::vector<std::string> recomb_mutations =
+            get_node_mutations(T, r.recomb_node_id);
+
+        if (check_rmns_positions(positions, recomb_mutations)) {
+            r.filter += "RMNM,";
+            num_rmnm++;
+        }
 
         // Record recombinant node id
         trio_node_ids.push_back(r.recomb_node_id);
@@ -420,8 +564,8 @@ void get_recombination_info(
                 Descendant desc = descendant_map.at(d);
                 std::string sample_date = desc.date;
                 circulating_countries.insert(desc.country);
-                //  Calculate number of months since sample was first sequenced
-                //  (0-index)
+                //  Calculate number of months since sample was first
+                //  sequenced (0-index)
                 // Only accepting dates in format, eg) 2022-11-09
                 if (sample_date.length() != 10)
                     continue;
@@ -467,6 +611,7 @@ void get_recombination_info(
         // Keep track of rank score for each detected recombinant
         ranked_recombs.push_back(rr);
     }
+
     // Sort the recombinants by max score
     std::sort(ranked_recombs.begin(), ranked_recombs.end(),
               [](const Ranked_Recombinant &a, const Ranked_Recombinant &b) {
