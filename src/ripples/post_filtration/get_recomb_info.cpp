@@ -122,13 +122,43 @@ bool check_rmnm_site_helper(const T &vec, const T &rmnm_vec) {
     return true;
 }
 
+bool verify_mutations(int position_idx, std::vector<std::string> &mut_vec) {
+    using mutations = const std::vector<std::string>;
+    std::array<mutations, 18> known_rmnms = {
+        mutations{"C21302T", "C21304A", "G21305A"},
+        mutations{"C21304A", "G21305A"},
+        mutations{"A28877T", "G28878C"},
+        mutations{"G27382C", "A27383T", "T27384C"},
+        mutations{"T26491C", "A26492T", "T26497C"},
+        mutations{"G27758A", "T27760A"},
+        mutations{"T27875C", "C27881T", "G27882", "C27883T"},
+        mutations{"C27881T", "G27882C", "C27883T"},
+        mutations{"C25162A", "C25163A"},
+        mutations{"T21294A", "G21295A", "G21296A"},
+        mutations{"A27038T", "T27039A", "C27040A"},
+        mutations{"A21550C", "A21551T"},
+        mutations{"C13423A", "C13424A"},
+        mutations{"A4576T", "T4579A"},
+        mutations{"A20284T", "T20285C"},
+        mutations{"A507T", "T508C", "G509A"},
+        mutations{"T28881A", "G28882A", "G28883C"},
+        mutations{"T21994C", "T21995C"}};
+
+    for (const auto &mut : known_rmnms[position_idx]) {
+        if (std::find(mut_vec.begin(), mut_vec.end(), mut) == mut_vec.end()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool check_rmns_positions(std::set<int> &informative_sites,
                           std::vector<std::string> &mut_vec) {
     if (informative_sites.empty()) {
         return false;
     }
     using positions = const std::set<int>;
-    std::array<positions, 15> known_rmnms = {
+    std::array<positions, 18> known_rmnms = {
         positions{21302, 21304, 21305},
         positions{21304, 21305},
         positions{28877, 28878},
@@ -143,13 +173,18 @@ bool check_rmns_positions(std::set<int> &informative_sites,
         positions{21550, 21551},
         positions{13423, 13424},
         positions{4576, 4579},
-        positions{20284, 20285}};
+        positions{20284, 20285},
+        positions{507, 508, 509},
+        positions{28881, 28882, 28883},
+        positions{21994, 21995}};
 
     int rmnms_index = 0;
     // Check any of the known RMNMs found in set of node mutations
     for (const auto &sites : known_rmnms) {
         if (check_rmnm_site_helper(informative_sites, sites)) {
-            return true;
+            if (verify_mutations(rmnms_index, mut_vec)) {
+                return true;
+            }
         }
         ++rmnms_index;
     }
