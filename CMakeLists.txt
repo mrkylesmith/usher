@@ -18,7 +18,7 @@ message(STATUS "${usher_VERSION}")
 
 configure_file(src/version.hpp.in version.hpp)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -pipe -g -ggdb3 -Wno-unused-function  -Wno-deprecated-declarations") 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -pipe -g -ggdb3 -Wno-unused-function  -Wno-deprecated-declarations")
 #-DDEBUG_PARSIMONY_SCORE_CHANGE_CORRECT -fsanitize=address -DCHECK_PAR_MAIN  -DEASY_DEBUG -DSTOP_ON_ERROR  -DDETAILED_MERGER_CHECK -O0
 set(CMAKE_CXX_FLAGS_DEBUG "  -fno-eliminate-unused-debug-symbols -O0")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-DNDEBUG -O3")
@@ -39,6 +39,7 @@ find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 include_directories(${Protobuf_INCLUDE_DIRS})
 
+
 include(${TBB_DIR}/cmake/TBBBuild.cmake)
 tbb_build(TBB_ROOT ${TBB_DIR} CONFIG_DIR TBB_DIR MAKE_ARGS tbb_cpf=1)
 find_package(TBB REQUIRED tbbmalloc tbbmalloc_proxy tbb_preview)
@@ -56,6 +57,7 @@ file(GLOB RIPPLES_SRCS "src/ripples/*.cpp" "src/ripples/*.hpp")
 file(GLOB USHER_SAMPLED_SRCS "src/usher-sampled/static_tree_mapper/*" "src/usher-sampled/*.cpp" "src/usher-sampled/*.hpp")
 file(GLOB RIPPLES_FAST_SRCS "src/ripples/ripples_fast/*.cpp" "src/ripples/ripples_fast/*.hpp")
 file(GLOB RIPPLES_UTILS_SRCS "src/ripples/util/*.cpp" "src/ripples/util/*.hpp")
+file(GLOB DIVERSITY_SRCS "src/ripples/diversity/*.cpp" "src/ripples/diversity/*.hpp")
 file(GLOB POST_FILTRATION_SRCS "src/ripples/post_filtration/*.cpp" "src/ripples/post_filtration/*.hpp")
 
 set_source_files_properties(src/mutation_annotated_tree.cpp PROPERTIES COMPILE_FLAGS -O3)
@@ -118,6 +120,14 @@ if(DEFINED Protobuf_PATH)
         ${RIPPLES_UTILS_SRCS}
         )
 
+    add_executable(diversity
+        src/mutation_annotated_tree.cpp
+        src/usher_mapper.cpp
+        src/ripples/util/text_parser.cpp
+        ${DIVERSITY_SRCS}
+        )
+
+
     add_executable(post_filtration
         src/mutation_annotated_tree.cpp
         src/usher_mapper.cpp
@@ -128,12 +138,14 @@ if(DEFINED Protobuf_PATH)
         ${PROTO_HDRS}
         )
 
+
     add_executable(ripplesInit
         src/mutation_annotated_tree.cpp
         src/usher_mapper.cpp
         src/ripples/init/init_pipeline.cpp
         src/ripples/init/main.cpp
         )
+
 
     add_executable(matOptimize
         src/matOptimize/mutation_annotated_tree.cpp
@@ -236,9 +248,13 @@ if(DEFINED Protobuf_PATH)
 
     protobuf_generate(
         LANGUAGE cpp
-        TARGET post_filtration
+        TARGET diversity
         PROTOS parsimony.proto)
 
+    protobuf_generate(
+        LANGUAGE cpp
+        TARGET post_filtration
+        PROTOS parsimony.proto)
 
     protobuf_generate(
         LANGUAGE cpp
@@ -357,6 +373,15 @@ else()
         src/usher_mapper.cpp
         src/matUtils/describe.cpp
         ${RIPPLES_UTILS_SRCS}
+        ${PROTO_SRCS}
+        ${PROTO_HDRS}
+        )
+
+    add_executable(diversity
+        src/mutation_annotated_tree.cpp
+        src/usher_mapper.cpp
+        src/ripples/util/text_parser.cpp
+        ${DIVERSITY_SRCS}
         ${PROTO_SRCS}
         ${PROTO_HDRS}
         )
@@ -533,6 +558,7 @@ TARGET_COMPILE_OPTIONS(matUtils PRIVATE -DTBB_SUPPRESS_DEPRECATED_MESSAGES)
 TARGET_LINK_LIBRARIES(matUtils PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 
 TARGET_LINK_LIBRARIES(ripplesUtils PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
+TARGET_LINK_LIBRARIES(diversity PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 TARGET_LINK_LIBRARIES(ripplesInit PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 TARGET_LINK_LIBRARIES(post_filtration PRIVATE stdc++  ${Boost_LIBRARIES} ${TBB_IMPORTED_TARGETS} ${Protobuf_LIBRARIES}) # OpenMP::OpenMP_CXX)
 
@@ -548,3 +574,4 @@ if(USHER_SERVER)
 else()
     install(TARGETS usher matUtils matOptimize ripples DESTINATION bin)
 endif()
+

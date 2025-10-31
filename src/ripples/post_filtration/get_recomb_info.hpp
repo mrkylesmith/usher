@@ -53,6 +53,8 @@ struct Recomb_Samples {
     std::string latest_country;
     std::unordered_set<std::string> circulating_countries;
     std::vector<std::string> sampled_descendants;
+    std::vector<std::string> donor_sampled_descendants;
+    std::vector<std::string> acceptor_sampled_descendants;
 
     Recomb_Samples(float w) { sequence_weight = 0.0; }
 };
@@ -110,8 +112,7 @@ inline float alternate_recombinant_rank(int days, int num_descendants,
     return (static_cast<float>(num_descendants) / days) * pow(2, -weight);
 }
 
-int elapsed_days(std::string tree_date,
-                 std::string inferred_recomb_date);
+int elapsed_days(std::string tree_date, std::string inferred_recomb_date);
 
 std::vector<std::string> format_date(std::string date);
 
@@ -131,8 +132,8 @@ void parse_metadata(std::string &tsv_file,
                     std::unordered_map<std::string, Descendant> &map,
                     int key_col, int date_col, int country_col, bool header);
 
-std::vector<std::string>
-sample_descendants(MAT::Tree &T, std::string recomb_node_id,
-                   std::vector<std::string> &desc_vec);
+std::vector<std::string> sample_descendants(MAT::Tree &T,
+                                            std::string recomb_node_id,
+                                            std::vector<std::string> &desc_vec);
 
 #endif
