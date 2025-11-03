@@ -20,8 +20,6 @@ std::optional<var_map> parse_diversity_flags(int argc, char *argv[]) {
         "Chronumental dates file corresponding to the given MAT. [REQUIRED]")(
         "month,m", po::value<std::string>()->required(),
         "Given month to calculate standing genetic diversity for. [REQUIRED]")(
-        "output-directory,o", po::value<std::string>(),
-        "Output directory to write all output files to [Optional]. ")(
         "threads,T",
         po::value<uint32_t>(&num_threads)->default_value(num_cores),
         num_threads_message.c_str())("help,h", "Print help message.");
